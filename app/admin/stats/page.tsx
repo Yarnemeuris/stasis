@@ -53,6 +53,7 @@ interface Stats {
     totalUsersWithBits: number;
   };
   funnel: { step: string; count: number }[];
+  bitsFunnel: { step: string; count: number }[];
   weeklyTrends: { week: string; projects: number; reviews: number; bits: number; hours: number }[];
   reviewTurnaround: {
     avgDesignHours: number;
@@ -130,6 +131,16 @@ const FUNNEL_LABELS: Record<string, string> = {
 
 const FUNNEL_ORDER = ['signed_up', 'created_project', 'design_submitted', 'design_approved', 'build_submitted', 'build_approved', 'qualified'];
 
+const BITS_FUNNEL_LABELS: Record<string, string> = {
+  bits_1: '1+ Bits',
+  bits_100: '100+ Bits',
+  bits_200: '200+ Bits',
+  bits_300: '300+ Bits',
+  bits_400: '400+ Bits',
+};
+
+const BITS_FUNNEL_ORDER = ['bits_1', 'bits_100', 'bits_200', 'bits_300', 'bits_400'];
+
 function Bar({ value, max, color = 'bg-orange-500' }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
@@ -158,7 +169,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function HorizontalFunnel({ funnel }: { funnel: { step: string; count: number }[] }) {
+function HorizontalFunnel({ funnel, title, labels, order, bare }: {
+  funnel: { step: string; count: number }[];
+  title: string;
+  labels: Record<string, string>;
+  order: string[];
+  bare?: boolean;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const tooltipPosRef = useRef({ x: 0, y: 0 });
@@ -193,7 +210,7 @@ function HorizontalFunnel({ funnel }: { funnel: { step: string; count: number }[
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  const steps = FUNNEL_ORDER.map((step, i) => {
+  const steps = order.map((step, i) => {
     const row = funnel.find((f) => f.step === step);
     const count = row?.count ?? 0;
     const firstCount = funnel.find((f) => f.step === FUNNEL_ORDER[0])?.count ?? 1;
@@ -201,7 +218,7 @@ function HorizontalFunnel({ funnel }: { funnel: { step: string; count: number }[
     const pctRetained = i > 0 && prevCount > 0 ? ((count / prevCount) * 100) : 100;
     const pctOfTotal = firstCount > 0 ? ((count / firstCount) * 100) : 0;
     const changePct = i > 0 && prevCount > 0 ? (((count - prevCount) / prevCount) * 100) : 0;
-    return { step, name: FUNNEL_LABELS[step] ?? step, count, pctOfTotal, pctRetained, changePct };
+    return { step, name: labels[step] ?? step, count, pctOfTotal, pctRetained, changePct };
   });
 
   const n = steps.length;
@@ -240,8 +257,7 @@ function HorizontalFunnel({ funnel }: { funnel: { step: string; count: number }[
     setTooltipVisible(false);
   };
 
-  return (
-    <Section title="User Funnel">
+  const content = (
       <div
         ref={containerRef}
         className="w-full relative"
@@ -415,8 +431,18 @@ function HorizontalFunnel({ funnel }: { funnel: { step: string; count: number }[
           </>
         )}
       </div>
-    </Section>
   );
+
+  if (bare) {
+    return (
+      <div>
+        <h2 className="text-brown-800 text-lg uppercase tracking-wide mb-4">{title}</h2>
+        {content}
+      </div>
+    );
+  }
+
+  return <Section title={title}>{content}</Section>;
 }
 
 export default function StatsPage() {
@@ -484,8 +510,20 @@ export default function StatsPage() {
         />
       </div>
 
-      {/* User Funnel */}
-      {stats.funnel.length > 0 && <HorizontalFunnel funnel={stats.funnel} />}
+      {/* Funnels */}
+      {(stats.funnel.length > 0 || stats.bitsFunnel.length > 0) && (
+        <div className="bg-cream-100 border-2 border-cream-400 p-6 lg:px-10">
+          {stats.funnel.length > 0 && (
+            <HorizontalFunnel funnel={stats.funnel} title="User Funnel" labels={FUNNEL_LABELS} order={FUNNEL_ORDER} bare />
+          )}
+          {stats.funnel.length > 0 && stats.bitsFunnel.length > 0 && (
+            <div className="border-t border-cream-400 my-6" />
+          )}
+          {stats.bitsFunnel.length > 0 && (
+            <HorizontalFunnel funnel={stats.bitsFunnel} title="Bits Funnel" labels={BITS_FUNNEL_LABELS} order={BITS_FUNNEL_ORDER} bare />
+          )}
+        </div>
+      )}
 
       {/* Weekly Trends */}
       {stats.weeklyTrends.length > 0 && (

@@ -50,6 +50,7 @@ export async function GET() {
 
     // New metrics
     funnelStats,
+    bitsFunnelStats,
     weeklyTrends,
     reviewTurnaround,
     balanceDistribution,
@@ -189,6 +190,25 @@ export async function GET() {
       SELECT 'qualified', COUNT(*)::bigint FROM (
         SELECT "userId" FROM currency_transaction GROUP BY "userId" HAVING SUM(amount) >= 350
       ) q
+    `,
+
+    // --- Bits Funnel ---
+    prisma.$queryRaw<{ step: string; count: bigint }[]>`
+      WITH balances AS (
+        SELECT "userId", SUM(amount) as balance
+        FROM currency_transaction
+        GROUP BY "userId"
+        HAVING SUM(amount) > 0
+      )
+      SELECT 'bits_1' as step, COUNT(*)::bigint as count FROM balances WHERE balance >= 1
+      UNION ALL
+      SELECT 'bits_100', COUNT(*)::bigint FROM balances WHERE balance >= 100
+      UNION ALL
+      SELECT 'bits_200', COUNT(*)::bigint FROM balances WHERE balance >= 200
+      UNION ALL
+      SELECT 'bits_300', COUNT(*)::bigint FROM balances WHERE balance >= 300
+      UNION ALL
+      SELECT 'bits_400', COUNT(*)::bigint FROM balances WHERE balance >= 400
     `,
 
     // --- Weekly Trends (last 12 weeks) ---
@@ -429,6 +449,10 @@ export async function GET() {
       totalUsersWithBits: Number(qual.total_with_bits),
     },
     funnel: funnelStats.map((r) => ({
+      step: r.step,
+      count: Number(r.count),
+    })),
+    bitsFunnel: bitsFunnelStats.map((r) => ({
       step: r.step,
       count: Number(r.count),
     })),
