@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Stats {
   projects: {
@@ -151,10 +151,271 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-cream-100 border-2 border-cream-400 p-6">
+    <div className="bg-cream-100 border-2 border-cream-400 p-6 lg:px-10">
       <h2 className="text-brown-800 text-lg uppercase tracking-wide mb-4">{title}</h2>
       {children}
     </div>
+  );
+}
+
+function HorizontalFunnel({ funnel }: { funnel: { step: string; count: number }[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipPosRef = useRef({ x: 0, y: 0 });
+  const tooltipTargetRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef<number>(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) setContainerWidth(entry.contentRect.width);
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Smooth tooltip lerp loop
+  useEffect(() => {
+    const lerp = 0.12;
+    const tick = () => {
+      tooltipPosRef.current.x += (tooltipTargetRef.current.x - tooltipPosRef.current.x) * lerp;
+      tooltipPosRef.current.y += (tooltipTargetRef.current.y - tooltipPosRef.current.y) * lerp;
+      if (tooltipRef.current) {
+        tooltipRef.current.style.left = `${tooltipPosRef.current.x}px`;
+        tooltipRef.current.style.top = `${tooltipPosRef.current.y}px`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const steps = FUNNEL_ORDER.map((step, i) => {
+    const row = funnel.find((f) => f.step === step);
+    const count = row?.count ?? 0;
+    const firstCount = funnel.find((f) => f.step === FUNNEL_ORDER[0])?.count ?? 1;
+    const prevCount = i > 0 ? (funnel.find((f) => f.step === FUNNEL_ORDER[i - 1])?.count ?? 1) : count;
+    const pctRetained = i > 0 && prevCount > 0 ? ((count / prevCount) * 100) : 100;
+    const pctOfTotal = firstCount > 0 ? ((count / firstCount) * 100) : 0;
+    const changePct = i > 0 && prevCount > 0 ? (((count - prevCount) / prevCount) * 100) : 0;
+    return { step, name: FUNNEL_LABELS[step] ?? step, count, pctOfTotal, pctRetained, changePct };
+  });
+
+  const n = steps.length;
+  const svgH = 120;
+  const firstColW = 100;
+  const segW = containerWidth > 0 && n > 1 ? (containerWidth - firstColW) / (n - 1) : 100;
+  const minHeightPct = 8;
+
+  const updateTooltipTarget = (e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      tooltipTargetRef.current = {
+        x: e.clientX - rect.left + 16,
+        y: e.clientY - rect.top - 80,
+      };
+    }
+  };
+
+  const handleContainerMove = (e: React.MouseEvent) => {
+    if (!containerRef.current || containerWidth <= 0) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const relX = e.clientX - rect.left;
+    let idx: number;
+    if (relX < firstColW) {
+      idx = 0;
+    } else {
+      idx = Math.min(1 + Math.floor((relX - firstColW) / segW), n - 1);
+    }
+    setHoveredIdx(idx);
+    setTooltipVisible(true);
+    updateTooltipTarget(e);
+  };
+
+  const handleContainerLeave = () => {
+    setHoveredIdx(null);
+    setTooltipVisible(false);
+  };
+
+  return (
+    <Section title="User Funnel">
+      <div
+        ref={containerRef}
+        className="w-full relative"
+        onMouseMove={handleContainerMove}
+        onMouseLeave={handleContainerLeave}
+      >
+        {containerWidth > 0 && (
+          <>
+            {/* Column layout */}
+            <div className="flex relative">
+              {steps.map((s, i) => {
+                const isHover = hoveredIdx === i;
+                const isFirst = i === 0;
+
+                // For segments after the first, compute trapezoid
+                const thisH = Math.max(s.pctOfTotal, minHeightPct);
+                const nextH = i < n - 1
+                  ? Math.max(steps[i + 1].pctOfTotal, minHeightPct)
+                  : thisH;
+                const leftTop = (svgH - (svgH * thisH) / 100) / 2;
+                const leftBot = svgH - leftTop;
+                const rightTop = (svgH - (svgH * nextH) / 100) / 2;
+                const rightBot = svgH - rightTop;
+                const points = `0,${leftTop} ${segW},${rightTop} ${segW},${rightBot} 0,${leftBot}`;
+                const baseOpacity = 1 - i * 0.09;
+
+                return (
+                  <div
+                    key={s.step}
+                    className="relative flex flex-col"
+                    style={{ width: isFirst ? firstColW : segW, paddingTop: 8, paddingBottom: 8 }}
+                  >
+                    {/* Hover highlight — full column height */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: isHover ? 'rgba(64, 53, 41, 0.06)' : 'transparent',
+                        transition: 'background 150ms',
+                      }}
+                    />
+
+                    {/* Vertical divider line — full column height */}
+                    {i > 0 && (
+                      <div
+                        className="absolute top-0 bottom-0 left-0 pointer-events-none"
+                        style={{
+                          width: 1,
+                          background: 'rgba(64, 53, 41, 0.25)',
+                        }}
+                      />
+                    )}
+
+                    {/* Top label — fixed height so wrapping doesn't misalign columns */}
+                    <div
+                      className="relative flex items-end mb-2"
+                      style={{ height: 28, paddingRight: 4 }}
+                    >
+                      <span
+                        className={`text-xs uppercase tracking-wider leading-tight w-full ${
+                          isHover ? 'text-orange-500' : 'text-brown-800'
+                        }`}
+                        style={{
+                          fontFamily: 'var(--font-mono), monospace',
+                          textAlign: 'right',
+                          transition: 'color 150ms',
+                        }}
+                      >
+                        {s.name}
+                      </span>
+                    </div>
+
+                    {/* Funnel area */}
+                    {isFirst ? (
+                      /* First column: count display instead of polygon */
+                      <div
+                        className="flex flex-col items-end justify-center relative"
+                        style={{ height: svgH, paddingRight: 12 }}
+                      >
+                        <span className="text-brown-800 font-mono font-bold text-2xl leading-none">
+                          {s.count}
+                        </span>
+                        <span className="text-brown-800/60 font-mono text-xs mt-0.5">
+                          count
+                        </span>
+                      </div>
+                    ) : (
+                      /* Remaining columns: trapezoid funnel segment */
+                      <svg
+                        width={segW}
+                        height={svgH}
+                        className="block relative"
+                      >
+                        <polygon
+                          points={points}
+                          fill="#E86A3A"
+                          opacity={isHover ? Math.min(baseOpacity + 0.08, 1) : baseOpacity}
+                          style={{ pointerEvents: 'none' }}
+                        />
+                      </svg>
+                    )}
+
+                    {/* Bottom stats */}
+                    <div className="relative flex flex-col mt-2" style={{ paddingRight: 4 }}>
+                      {!isFirst ? (
+                        <>
+                          <span
+                            className="text-brown-800 font-mono text-lg font-semibold"
+                            style={{ textAlign: 'right' }}
+                          >
+                            {s.count}
+                          </span>
+                          <span
+                            className="text-brown-800/40 font-mono text-sm"
+                            style={{ textAlign: 'right' }}
+                          >
+                            {s.pctOfTotal.toFixed(1)}%
+                          </span>
+                        </>
+                      ) : (
+                        <span>&nbsp;</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Tooltip */}
+            <div
+              ref={tooltipRef}
+              className="absolute pointer-events-none z-10"
+              style={{
+                opacity: tooltipVisible ? 1 : 0,
+                transition: 'opacity 150ms',
+              }}
+            >
+              {hoveredIdx !== null && (() => {
+                const s = steps[hoveredIdx];
+                return (
+                  <div
+                    className="bg-brown-800 border border-cream-400/20 px-4 py-3 min-w-[200px]"
+                    style={{ fontFamily: 'var(--font-mono), monospace' }}
+                  >
+                    <div className="flex justify-between gap-6 text-sm">
+                      <span className="text-cream-400 text-xs uppercase tracking-wider">Step</span>
+                      <span className="text-cream-100 font-medium">{s.name}</span>
+                    </div>
+                    <div className="flex justify-between gap-6 text-sm mt-0.5">
+                      <span className="text-cream-400 text-xs uppercase tracking-wider">Count</span>
+                      <span className="text-cream-100 font-medium">{s.count}</span>
+                    </div>
+                    {hoveredIdx > 0 && (
+                      <>
+                        <div className="border-t border-cream-400/20 my-2" />
+                        <div className="flex justify-between gap-6 text-sm">
+                          <span className="text-cream-400 text-xs uppercase tracking-wider">Retained</span>
+                          <span className="text-cream-100">{s.pctRetained.toFixed(1)}%</span>
+                        </div>
+                        <div className="flex justify-between gap-6 text-sm mt-0.5">
+                          <span className="text-cream-400 text-xs uppercase tracking-wider">vs. previous</span>
+                          <span className={s.changePct < 0 ? 'text-red-400' : 'text-green-400'}>
+                            {s.changePct > 0 ? '+' : ''}{s.changePct.toFixed(1)}%
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </>
+        )}
+      </div>
+    </Section>
   );
 }
 
@@ -224,42 +485,7 @@ export default function StatsPage() {
       </div>
 
       {/* User Funnel */}
-      {stats.funnel.length > 0 && (
-        <Section title="User Funnel">
-          <div className="space-y-2">
-            {FUNNEL_ORDER.map((step, i) => {
-              const row = stats.funnel.find((f) => f.step === step);
-              const count = row?.count ?? 0;
-              const firstCount = stats.funnel.find((f) => f.step === FUNNEL_ORDER[0])?.count ?? 1;
-              const prevCount = i > 0 ? (stats.funnel.find((f) => f.step === FUNNEL_ORDER[i - 1])?.count ?? 1) : count;
-              const dropoff = i > 0 && prevCount > 0 ? Math.round((count / prevCount) * 100) : 100;
-              const pctOfTotal = firstCount > 0 ? Math.round((count / firstCount) * 100) : 0;
-              return (
-                <div key={step}>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-brown-800 w-40">{FUNNEL_LABELS[step] ?? step}</span>
-                    <span className="text-brown-800 font-mono w-14 text-right">{count}</span>
-                    <div className="flex-1 h-6 bg-cream-200 border border-cream-400 relative">
-                      <div
-                        className="h-full bg-orange-500 transition-all"
-                        style={{ width: `${pctOfTotal}%` }}
-                      />
-                      <span className="absolute inset-0 flex items-center justify-center text-xs font-mono text-brown-800">
-                        {pctOfTotal}%
-                      </span>
-                    </div>
-                    {i > 0 && (
-                      <span className={`text-xs font-mono w-16 text-right ${dropoff < 50 ? 'text-red-600' : 'text-brown-800/60'}`}>
-                        {dropoff}% kept
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
+      {stats.funnel.length > 0 && <HorizontalFunnel funnel={stats.funnel} />}
 
       {/* Weekly Trends */}
       {stats.weeklyTrends.length > 0 && (
