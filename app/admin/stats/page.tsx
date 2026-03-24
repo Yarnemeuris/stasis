@@ -213,8 +213,8 @@ function HorizontalFunnel({ funnel, title, labels, order, bare }: {
   const steps = order.map((step, i) => {
     const row = funnel.find((f) => f.step === step);
     const count = row?.count ?? 0;
-    const firstCount = funnel.find((f) => f.step === FUNNEL_ORDER[0])?.count ?? 1;
-    const prevCount = i > 0 ? (funnel.find((f) => f.step === FUNNEL_ORDER[i - 1])?.count ?? 1) : count;
+    const firstCount = funnel.find((f) => f.step === order[0])?.count ?? 1;
+    const prevCount = i > 0 ? (funnel.find((f) => f.step === order[i - 1])?.count ?? 1) : count;
     const pctRetained = i > 0 && prevCount > 0 ? ((count / prevCount) * 100) : 100;
     const pctOfTotal = firstCount > 0 ? ((count / firstCount) * 100) : 0;
     const changePct = i > 0 && prevCount > 0 ? (((count - prevCount) / prevCount) * 100) : 0;
@@ -225,7 +225,7 @@ function HorizontalFunnel({ funnel, title, labels, order, bare }: {
   const svgH = 80;
   const firstColW = 100;
   const segW = containerWidth > 0 && n > 1 ? (containerWidth - firstColW) / (n - 1) : 100;
-  const minHeightPct = 8;
+  const minHeightPct = 3;
 
   const updateTooltipTarget = (e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -348,6 +348,8 @@ function HorizontalFunnel({ funnel, title, labels, order, bare }: {
                       <svg
                         width={segW}
                         height={svgH}
+                        viewBox={`0 0 ${segW} ${svgH}`}
+                        preserveAspectRatio="none"
                         className="block relative"
                       >
                         <polygon
