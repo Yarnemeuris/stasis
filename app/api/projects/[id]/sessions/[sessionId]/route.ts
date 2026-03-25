@@ -149,6 +149,19 @@ export async function PATCH(
     )
   }
 
+  const MAX_PROJECT_HOURS = 100
+  const existingHours = await prisma.workSession.aggregate({
+    where: { projectId, id: { not: sessionId } },
+    _sum: { hoursClaimed: true },
+  })
+  const totalAfter = (existingHours._sum.hoursClaimed ?? 0) + hoursClaimed
+  if (totalAfter > MAX_PROJECT_HOURS) {
+    return NextResponse.json(
+      { error: `Total project hours cannot exceed ${MAX_PROJECT_HOURS}. Current total (excluding this session): ${existingHours._sum.hoursClaimed ?? 0}h.` },
+      { status: 400 }
+    )
+  }
+
   if (!content || typeof content !== "string" || content.trim().length === 0) {
     return NextResponse.json(
       { error: "Journal content is required" },
