@@ -429,7 +429,7 @@ export async function submitYSWSProjectSubmission(data: {
     'ZIP / Postal Code': data.zip || '',
     'Birthday': data.birthday || '',
     'Optional - Override Hours Spent': data.totalHours,
-    'Optional - Override Hours Spent Justification': data.hoursJustification || '',
+    ...(data.hoursJustification != null ? { 'Optional - Override Hours Spent Justification': data.hoursJustification } : {}),
     'Requested Grant Amount': data.grantAmount ?? 0,
     'Complexity Tier': data.complexityTier || '',
     'Stasis ID': data.stasisId || '',
