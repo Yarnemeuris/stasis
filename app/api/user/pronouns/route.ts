@@ -53,13 +53,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Invite she/her users to #stasis-secret-spot
-  if (pronouns === "she/her") {
+  if (pronouns === "she/her" && process.env.ENABLE_SECRET_SPOT_INVITE !== "false") {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { slackId: true },
     })
     if (user?.slackId) {
-      inviteToSecretSpot(user.slackId).catch((err) =>
+      inviteToSecretSpot(user.slackId).catch((err: unknown) =>
         console.error("Failed to invite to secret spot:", err)
       )
     }
