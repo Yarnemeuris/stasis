@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const nameSearch = url.searchParams.get("nameSearch") || "" // text search on title/description
   const sort = url.searchParams.get("sort") || "" // "most_hours" for descending hours sort
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"))
-  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "20")))
+  const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") || "20")))
   const offset = (page - 1) * limit
 
   // Query projects directly — works whether or not ProjectSubmission rows exist

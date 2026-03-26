@@ -281,10 +281,26 @@ export async function GET(
     ]
   }
 
-  const allProjects = await prisma.project.findMany({
+  const allProjectsRaw = await prisma.project.findMany({
     where: navWhere,
-    select: { id: true },
+    select: {
+      id: true,
+      createdAt: true,
+      submissions: {
+        select: { preReviewed: true, stage: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
     orderBy: { createdAt: "asc" },
+  })
+
+  // Sort pre-reviewed projects first, then by createdAt
+  const allProjects = allProjectsRaw.sort((a, b) => {
+    const aPre = a.submissions[0]?.preReviewed ? 1 : 0
+    const bPre = b.submissions[0]?.preReviewed ? 1 : 0
+    if (aPre !== bPre) return bPre - aPre
+    return 0 // preserve createdAt order from DB
   })
 
   const currentIdx = allProjects.findIndex((p) => p.id === project!.id)

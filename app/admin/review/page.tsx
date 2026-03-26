@@ -81,11 +81,6 @@ export default function ReviewQueuePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [category, setCategory] = useState('');
-  const [guide, setGuide] = useState('');
-  const [nameSearch, setNameSearch] = useState('');
-  const [sort, setSort] = useState('');
-  const [visibleCount, setVisibleCount] = useState(20);
   const [statsTab, setStatsTab] = useState<'weekly' | 'allTime'>('weekly');
   const [navigating, setNavigating] = useState(false);
 
@@ -125,11 +120,7 @@ export default function ReviewQueuePage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
-      if (category) params.set('category', category);
-      if (guide) params.set('guide', guide);
-      if (nameSearch) params.set('nameSearch', nameSearch);
-      if (sort) params.set('sort', sort);
-      params.set('limit', '200');
+      params.set('limit', '500');
       const res = await fetch(`/api/reviews?${params}`);
       if (res.ok) setData(await res.json());
     } catch (err) {
@@ -137,7 +128,7 @@ export default function ReviewQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [search, category, guide, nameSearch, sort]);
+  }, [search]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -154,8 +145,7 @@ export default function ReviewQueuePage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearch(searchInput);
-    setVisibleCount(20);
-  };
+     };
 
   return (
     <>
@@ -228,37 +218,28 @@ export default function ReviewQueuePage() {
         </div>
       )}
 
-      {/* Toolbar */}
+      {/* Toolbar — each filter button starts reviewing with that filter */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
         <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-brown-800 uppercase tracking-wider mr-1">Filter:</span>
+          <span className="text-xs text-brown-800 uppercase tracking-wider mr-1">Review:</span>
           <button
-            onClick={() => { setCategory(''); setGuide(''); setVisibleCount(20); }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-              category === '' && guide === ''
-                ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                : 'border-cream-400 text-brown-800 hover:border-orange-500'
-            }`}
+            onClick={() => startFilteredReview('', '', '', '')}
+            disabled={navigating}
+            className="px-4 py-1.5 text-xs uppercase tracking-wider border border-orange-500 bg-orange-500 text-white hover:bg-orange-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            All
+            {navigating ? 'Loading...' : 'All'}
           </button>
           <button
-            onClick={() => { setCategory('DESIGN'); setGuide(''); setVisibleCount(20); }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-              category === 'DESIGN' && guide === ''
-                ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                : 'border-cream-400 text-brown-800 hover:border-orange-500'
-            }`}
+            onClick={() => startFilteredReview('DESIGN', '', '', '')}
+            disabled={navigating}
+            className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Design
           </button>
           <button
-            onClick={() => { setCategory('BUILD'); setGuide(''); setVisibleCount(20); }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-              category === 'BUILD' && guide === ''
-                ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                : 'border-cream-400 text-brown-800 hover:border-orange-500'
-            }`}
+            onClick={() => startFilteredReview('BUILD', '', '', '')}
+            disabled={navigating}
+            className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Build
           </button>
@@ -268,24 +249,18 @@ export default function ReviewQueuePage() {
           {starterProjects.map((sp) => (
             <button
               key={sp.id}
-              onClick={() => { setCategory(''); setGuide(guide === sp.id ? '' : sp.id); setVisibleCount(20); }}
-              className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-                guide === sp.id
-                  ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                  : 'border-cream-400 text-brown-800 hover:border-orange-500'
-              }`}
+              onClick={() => startFilteredReview('', sp.id, '', '')}
+              disabled={navigating}
+              className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {sp.name}
               {stats?.guideCounts[sp.id] ? ` (${stats.guideCounts[sp.id]})` : ''}
             </button>
           ))}
           <button
-            onClick={() => { setCategory(''); setGuide(guide === 'custom' ? '' : 'custom'); setVisibleCount(20); }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-              guide === 'custom'
-                ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                : 'border-cream-400 text-brown-800 hover:border-orange-500'
-            }`}
+            onClick={() => startFilteredReview('', 'custom', '', '')}
+            disabled={navigating}
+            className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Custom
             {stats?.guideCounts['custom'] ? ` (${stats.guideCounts['custom']})` : ''}
@@ -294,44 +269,25 @@ export default function ReviewQueuePage() {
           <span className="border-l border-cream-400 mx-1 hidden sm:inline-block" />
 
           <button
-            onClick={() => { setNameSearch(nameSearch === 'devboard' ? '' : 'devboard'); setCategory(''); setGuide(''); setVisibleCount(20); }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-              nameSearch === 'devboard'
-                ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                : 'border-cream-400 text-brown-800 hover:border-orange-500'
-            }`}
+            onClick={() => startFilteredReview('', '', 'devboard', '')}
+            disabled={navigating}
+            className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Devboard (name)
           </button>
           <button
-            onClick={() => { setNameSearch(nameSearch === 'keyboard' ? '' : 'keyboard'); setCategory(''); setGuide(''); setVisibleCount(20); }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-              nameSearch === 'keyboard'
-                ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                : 'border-cream-400 text-brown-800 hover:border-orange-500'
-            }`}
+            onClick={() => startFilteredReview('', '', 'keyboard', '')}
+            disabled={navigating}
+            className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Keyboard (name)
           </button>
           <button
-            onClick={() => { setSort(sort === 'most_hours' ? '' : 'most_hours'); setVisibleCount(20); }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
-              sort === 'most_hours'
-                ? 'border-orange-500 text-orange-500 bg-orange-500/10'
-                : 'border-cream-400 text-brown-800 hover:border-orange-500'
-            }`}
+            onClick={() => startFilteredReview('', '', '', 'most_hours')}
+            disabled={navigating}
+            className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Most Hours
-          </button>
-
-          <span className="border-l border-cream-400 mx-1 hidden sm:inline-block" />
-
-          <button
-            onClick={() => startFilteredReview(category, guide, nameSearch, sort)}
-            disabled={navigating}
-            className="px-4 py-1.5 text-xs uppercase tracking-wider border border-orange-500 bg-orange-500 text-white hover:bg-orange-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {navigating ? 'Loading...' : 'Start Reviewing'}
           </button>
         </div>
 
@@ -352,7 +308,7 @@ export default function ReviewQueuePage() {
           {search && (
             <button
               type="button"
-              onClick={() => { setSearch(''); setSearchInput(''); setVisibleCount(20); }}
+              onClick={() => { setSearch(''); setSearchInput('');}}
               className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer"
             >
               Clear
@@ -390,7 +346,7 @@ export default function ReviewQueuePage() {
                 </tr>
               </thead>
               <tbody>
-                {data.items.slice(0, visibleCount).map((item) => {
+                {data.items.map((item) => {
                   const tierInfo = item.tier ? getTierById(item.tier) : null;
                   const rowClass = item.claimedByOther
                     ? 'opacity-50'
@@ -492,20 +448,6 @@ export default function ReviewQueuePage() {
             </table>
           </div>
 
-          {/* Load More */}
-          {data.items.length > visibleCount && (
-            <div className="mt-6 flex items-center justify-center gap-4">
-              <button
-                onClick={() => setVisibleCount((c) => c + 20)}
-                className="px-4 py-2 text-xs uppercase tracking-wider border border-orange-500 text-orange-500 hover:bg-orange-500/10 cursor-pointer"
-              >
-                Load More
-              </button>
-              <span className="text-sm text-brown-800">
-                Showing {Math.min(visibleCount, data.items.length)} of {data.items.length}
-              </span>
-            </div>
-          )}
         </>
       )}
     </>
