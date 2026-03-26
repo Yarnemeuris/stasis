@@ -24,7 +24,7 @@ interface ReviewData {
       tier: number | null;
       tags: string[];
       noBomNeeded: boolean;
-      starterProjectId: string | null;
+       starterProjectId: string | null;
       cartScreenshots: string[];
       totalWorkUnits: number;
       entryCount: number;

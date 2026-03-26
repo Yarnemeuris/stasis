@@ -171,19 +171,20 @@ a:focus-visible {
 }
 
 /* Dark review theme — overrides cream/brown palette for review pages */
+/* Primary: #403529 (brown) with shades | Secondary: #DAD2BF (warm cream) */
 .review-dark-theme {
-	--color-cream-50: #1a1a2e;
-	--color-cream-100: #16213e;
-	--color-cream-200: #0f1626;
-	--color-cream-300: #1a2340;
-	--color-cream-400: #2a3a5c;
-	--color-cream-500: #4a5a7c;
-	--color-cream-600: #8a9ab8;
-	--color-brown-800: #e2e8f0;
-	--color-brown-900: #f1f5f9;
-	--color-orange-400: #fb923c;
-	--color-orange-500: #f97316;
-	--color-orange-600: #ea580c;
+	--color-cream-50: #2e2519;
+	--color-cream-100: #362b1e;
+	--color-cream-200: #403529;
+	--color-cream-300: #4d4035;
+	--color-cream-400: #5e5045;
+	--color-cream-500: #7a6d62;
+	--color-cream-600: #a89d90;
+	--color-brown-800: #DAD2BF;
+	--color-brown-900: #ebe5d6;
+	--color-orange-400: #FC8A58;
+	--color-orange-500: #E86A3A;
+	--color-orange-600: #D95D39;
 
 	margin: -2rem -1.5rem;
 	padding: 2rem 1.5rem;
@@ -196,7 +197,7 @@ a:focus-visible {
 
 .review-dark-theme ::selection {
 	background-color: var(--color-orange-500);
-	color: #0f1626;
+	color: #2e2519;
 }
 
 .review-dark-theme * {
