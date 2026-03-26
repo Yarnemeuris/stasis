@@ -173,7 +173,7 @@ export default function BitsLedgerPage() {
             value={filterUserId}
             onChange={(e) => { setFilterUserId(e.target.value); setOffset(0); }}
             placeholder="Leave blank for all users"
-            className="w-72 bg-cream-100 border border-cream-400 text-brown-800 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none font-mono"
+            className="w-full sm:w-72 bg-cream-100 border border-cream-400 text-brown-800 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none font-mono"
           />
         </div>
       </div>

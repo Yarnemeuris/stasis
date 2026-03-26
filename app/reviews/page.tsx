@@ -226,7 +226,7 @@ export default function ReviewQueuePage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by ID, title, or author..."
-            className="px-3 py-1.5 text-sm border border-cream-400 bg-cream-100 text-brown-800 placeholder:text-cream-600 focus:outline-none focus:border-orange-500 w-64"
+            className="px-3 py-1.5 text-sm border border-cream-400 bg-cream-100 text-brown-800 placeholder:text-cream-600 focus:outline-none focus:border-orange-500 w-full sm:w-64"
           />
           <button
             type="submit"

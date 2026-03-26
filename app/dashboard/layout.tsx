@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession, signIn, signOut } from "@/lib/auth-client";
 import { NoiseOverlay } from '../components/NoiseOverlay';
 import { UserMenu } from '../components/UserMenu';
@@ -22,6 +22,8 @@ export default function DashboardLayout({
   const router = useRouter();
 
   const [isFraudSuspended, setIsFraudSuspended] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (session) {
@@ -40,6 +42,23 @@ export default function DashboardLayout({
     }
   }, [session]);
 
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [mobileMenuOpen]);
+
   const getTabClass = (tabPath: string) => {
     const isActive = tabPath === '/dashboard' 
       ? pathname === '/dashboard'
@@ -51,6 +70,32 @@ export default function DashboardLayout({
         : 'text-brown-800 border-transparent hover:text-brown-800'
     }`;
   };
+
+  const getMobileMenuClass = (tabPath: string) => {
+    const isActive = tabPath === '/dashboard'
+      ? pathname === '/dashboard'
+      : pathname.startsWith(tabPath);
+
+    return `block px-4 py-3 text-sm uppercase tracking-wider transition-colors ${
+      isActive
+        ? 'text-orange-500 bg-orange-500/10 font-bold'
+        : 'text-brown-800 hover:bg-cream-200'
+    }`;
+  };
+
+  const tabs = [
+    { path: '/dashboard', label: 'Projects' },
+    { path: '/dashboard/discover', label: 'Discover' },
+    { path: '/dashboard/shop', label: 'Shop' },
+    { path: '/starter-projects', label: 'Starter Projects' },
+    { path: '/dashboard/help', label: 'Guidelines & FAQ' },
+  ];
+
+  const activeTab = tabs.find(t =>
+    t.path === '/dashboard'
+      ? pathname === '/dashboard'
+      : pathname.startsWith(t.path)
+  );
 
   if (isPending) {
     return (
@@ -128,27 +173,53 @@ export default function DashboardLayout({
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-cream-400">
+        {/* Tabs - Desktop */}
+        <div className="border-b border-cream-400 hidden sm:block">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-wrap">
-              <Link href="/dashboard" className={getTabClass('/dashboard')}>
-                Projects
-              </Link>
-              <Link href="/dashboard/discover" className={getTabClass('/dashboard/discover')}>
-                Discover
-              </Link>
-              <Link href="/dashboard/shop" className={getTabClass('/dashboard/shop')}>
-                Shop
-              </Link>
-              <Link href="/starter-projects" className={getTabClass('/starter-projects')}>
-                Starter Projects
-              </Link>
-              <Link href="/dashboard/help" className={getTabClass('/dashboard/help')}>
-                Guidelines & FAQ
-              </Link>
+              {tabs.map((tab) => (
+                <Link key={tab.path} href={tab.path} className={getTabClass(tab.path)}>
+                  {tab.label}
+                </Link>
+              ))}
             </div>
           </div>
+        </div>
+
+        {/* Mobile Navigation - Waffle Menu */}
+        <div className="border-b border-cream-400 sm:hidden" ref={menuRef}>
+          <div className="px-4 flex items-center justify-between">
+            <span className="text-sm uppercase tracking-wider text-orange-500 font-bold py-3">
+              {activeTab?.label || 'Menu'}
+            </span>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 text-brown-800 hover:text-orange-500 transition-colors cursor-pointer"
+              aria-label="Toggle navigation menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                {mobileMenuOpen ? (
+                  <path d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 0 0-1.4 1.4L10.6 12l-4.9 4.9a1 1 0 1 0 1.4 1.4L12 13.4l4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z" />
+                ) : (
+                  <>
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                  </>
+                )}
+              </svg>
+            </button>
+          </div>
+          {mobileMenuOpen && (
+            <div className="border-t border-cream-400 bg-cream-100">
+              {tabs.map((tab) => (
+                <Link key={tab.path} href={tab.path} className={getMobileMenuClass(tab.path)}>
+                  {tab.label}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-8">

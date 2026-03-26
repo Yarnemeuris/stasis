@@ -77,7 +77,7 @@ export default function AdminSlackPage() {
 
         {result && (
           <div className="space-y-3">
-            <div className="grid grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               <div className="bg-cream-200 p-3 text-center">
                 <div className="text-2xl text-brown-800 font-bold">{result.total}</div>
                 <div className="text-brown-800/70 uppercase text-xs">Total Users</div>

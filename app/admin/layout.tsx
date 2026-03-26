@@ -34,7 +34,7 @@ export default function AdminLayout({
         ? pathname === '/admin/audit'
         : pathname.startsWith(tabPath);
 
-    return `px-6 py-3 text-sm uppercase tracking-wider transition-colors border-b-2 -mb-[2px] ${
+    return `px-3 sm:px-6 py-3 text-sm uppercase tracking-wider whitespace-nowrap transition-colors border-b-2 -mb-[2px] ${
       isActive
         ? 'text-orange-500 border-orange-500'
         : 'text-brown-800 border-transparent hover:text-brown-800'
@@ -70,7 +70,7 @@ export default function AdminLayout({
             </Link>
             <h1 className="text-orange-500 text-xl uppercase tracking-wide">Admin</h1>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 sm:gap-6">
             <div className="flex items-center gap-2">
               <img
                 src={session?.user.image || '/default_slack.png'}
@@ -93,7 +93,7 @@ export default function AdminLayout({
         {/* Tabs */}
         <div className="border-b border-cream-400">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="flex gap-0">
+            <div className="flex overflow-x-auto gap-0">
               <Link href="/admin/review" className={getTabClass('/admin/review')}>
                 Review Queue
               </Link>

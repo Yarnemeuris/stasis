@@ -64,7 +64,9 @@ const mdxComponents: MDXComponents = {
     <blockquote className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 [&_p]:text-orange-600 [&_p]:m-0">{children as React.ReactNode}</blockquote>
   ),
   table: ({ children }) => (
-    <table className="w-full text-sm text-brown-800 border-collapse">{children as React.ReactNode}</table>
+    <div className="overflow-x-auto -mx-1 px-1">
+      <table className="w-full text-sm text-brown-800 border-collapse">{children as React.ReactNode}</table>
+    </div>
   ),
   th: ({ children }) => (
     <th className="text-left text-brown-800 font-medium border-b border-cream-400 pb-2 pr-4">{children as React.ReactNode}</th>

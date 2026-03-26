@@ -156,8 +156,8 @@ export default function AdminAuditPage() {
                       <th className="text-left text-cream-600 text-xs uppercase py-3 px-3">Timestamp</th>
                       <th className="text-left text-cream-600 text-xs uppercase py-3 px-3">Action</th>
                       <th className="text-left text-cream-600 text-xs uppercase py-3 px-3">Actor</th>
-                      <th className="text-left text-cream-600 text-xs uppercase py-3 px-3">Target</th>
-                      <th className="text-left text-cream-600 text-xs uppercase py-3 px-3">IP Address</th>
+                      <th className="text-left text-cream-600 text-xs uppercase py-3 px-3 hidden sm:table-cell">Target</th>
+                      <th className="text-left text-cream-600 text-xs uppercase py-3 px-3 hidden md:table-cell">IP Address</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,10 +180,10 @@ export default function AdminAuditPage() {
                         <td className="py-3 px-3 text-brown-800 text-sm">
                           {formatActor(log)}
                         </td>
-                        <td className="py-3 px-3 text-brown-800 text-sm max-w-xs truncate">
+                        <td className="py-3 px-3 text-brown-800 text-sm max-w-xs truncate hidden sm:table-cell">
                           {formatTarget(log)}
                         </td>
-                        <td className="py-3 px-3 text-brown-800 text-sm">
+                        <td className="py-3 px-3 text-brown-800 text-sm hidden md:table-cell">
                           {log.actorIp || '—'}
                         </td>
                       </tr>

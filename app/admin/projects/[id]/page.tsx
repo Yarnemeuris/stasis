@@ -908,7 +908,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
                     {/* Session Review Form - only show if any stage is in review */}
                     {isAnyStageInReview ? (
                       <div className="bg-cream-200 border border-cream-400 p-3 mt-4">
-                        <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                           <div>
                             <label className="text-brown-800 text-xs uppercase block mb-1">
                               Hours Approved
@@ -1003,7 +1003,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
 
                       {isAnyStageInReview ? (
                         <div className="bg-cream-200 border border-cream-400 p-3 mt-2">
-                          <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                             <div>
                               <label className="text-brown-800 text-xs uppercase block mb-1">
                                 Hours Approved

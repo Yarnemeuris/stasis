@@ -865,7 +865,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <div>
           {/* Project Header */}
           <div className="mb-8">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="flex-1">
                 {editingField === 'title' ? (
                   <div className="mb-2">
@@ -922,7 +922,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </div>
               
               {/* Project Image / Upload */}
-              <label className="w-64 h-44 bg-cream-100 border-2 border-dashed border-cream-400 hover:border-orange-500 hover:bg-cream-200 flex flex-col items-center justify-center flex-shrink-0 transition-colors cursor-pointer group relative overflow-hidden">
+              <label className="w-full sm:w-64 h-44 bg-cream-100 border-2 border-dashed border-cream-400 hover:border-orange-500 hover:bg-cream-200 flex flex-col items-center justify-center flex-shrink-0 transition-colors cursor-pointer group relative overflow-hidden">
                 {project.coverImage ? (
                   <>
                     <img 
@@ -971,8 +971,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             )}
 
             {/* Stats */}
-            <div className="mt-4 bg-cream-200/80 border border-cream-300 p-4 w-fit">
-              <div className="flex gap-6 text-sm">
+            <div className="mt-4 bg-cream-200/80 border border-cream-300 p-4 w-full sm:w-fit">
+              <div className="flex flex-wrap gap-3 sm:gap-6 text-sm">
                 <div>
                   <span className="text-brown-800">Hours Logged:</span>{' '}
                   <span className="text-brown-800">{project.totalHoursClaimed.toFixed(1)}h</span>
@@ -998,7 +998,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       type="text"
                       value={editGithubRepo}
                       onChange={(e) => setEditGithubRepo(e.target.value)}
-                      className="bg-white border-2 border-orange-500 text-brown-800 px-2 py-0.5 text-sm focus:outline-none w-64"
+                      className="bg-white border-2 border-orange-500 text-brown-800 px-2 py-0.5 text-sm focus:outline-none w-full sm:w-64"
                       placeholder="github.com/username/repo"
                       autoFocus
                     />
@@ -1943,7 +1943,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <div className="bg-cream-100 border-2 border-cream-400 max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-brown-800 text-xl uppercase tracking-wide mb-4">Edit BOM Item</h3>
                 <form onSubmit={handleSaveBomEdit}>
-                  <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <div>
                       <label className="text-brown-800 text-xs uppercase block mb-1">Name *</label>
                       <input

@@ -700,7 +700,7 @@ export default function StatsPage() {
         {/* Users */}
         <Section title="Users">
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <div className="text-brown-800 text-xs uppercase tracking-wider">Total</div>
                 <div className="text-orange-500 text-xl font-mono">{stats.users.total}</div>
@@ -863,7 +863,7 @@ export default function StatsPage() {
         {/* Top Reviewers */}
         <Section title="Top Reviewers">
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               {Object.entries(stats.reviews.byDecision).map(([decision, count]) => (
                 <div key={decision}>
                   <div className="text-brown-800 text-xs uppercase tracking-wider">{decision.replace(/_/g, ' ')}</div>
@@ -893,7 +893,7 @@ export default function StatsPage() {
         {/* Bill of Materials */}
         <Section title="Bill of Materials">
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <div className="text-brown-800 text-xs uppercase tracking-wider">Total Items</div>
                 <div className="text-orange-500 text-xl font-mono">{stats.bom.totalItems}</div>
@@ -923,7 +923,7 @@ export default function StatsPage() {
 
         {/* Qualification */}
         <Section title="Qualification Progress">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <div className="text-brown-800 text-xs uppercase tracking-wider">Stasis Qualified</div>
               <div className="text-orange-500 text-2xl font-mono">{stats.qualification.qualifiedStasis}</div>
