@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma"
 import { requirePermission } from "@/lib/admin-auth"
 import { Permission, hasRole, Role } from "@/lib/permissions"
 import { getTierById } from "@/lib/tiers"
+import { totalBomCost } from "@/lib/format"
 
 export async function GET(request: NextRequest) {
   const authCheck = await requirePermission(Permission.REVIEW_PROJECTS)
@@ -109,9 +110,7 @@ export async function GET(request: NextRequest) {
   const items = projects.map((project) => {
     const totalWorkUnits = project.workSessions.reduce((sum, s) => sum + s.hoursClaimed, 0)
     const entryCount = project.workSessions.length
-    const bomCost = project.bomItems
-      .filter((b) => b.status === "approved" || b.status === "pending")
-      .reduce((sum, b) => sum + b.totalCost, 0)
+    const bomCost = totalBomCost(project.bomItems, project.bomTax, project.bomShipping)
 
     // Determine which stage is in review
     const designInReview = project.designStatus === "in_review"
@@ -136,6 +135,8 @@ export async function GET(request: NextRequest) {
       workUnits: Math.round(totalWorkUnits * 10) / 10,
       entryCount,
       bomCost: Math.round(bomCost * 100) / 100,
+      bomTax: project.bomTax ?? 0,
+      bomShipping: project.bomShipping ?? 0,
       costPerUnit: totalWorkUnits > 0 ? Math.round((bomCost / totalWorkUnits) * 100) / 100 : 0,
       bitsPerHour: (() => {
         if (totalWorkUnits <= 0 || !project.tier) return null

@@ -8,6 +8,7 @@ import { getTierById, getTierBits, TIERS } from "@/lib/tiers"
 import { appendLedgerEntry, CurrencyTransactionType } from "@/lib/currency"
 import { sendSlackDM } from "@/lib/slack"
 import { syncProjectToAirtable } from "@/lib/airtable"
+import { totalBomCost } from "@/lib/format"
 
 export async function POST(
   request: NextRequest,
@@ -168,9 +169,7 @@ export async function POST(
   const stageKey = stage.toLowerCase() as "design" | "build"
 
   // For design approvals, default grant to BOM cost if not explicitly overridden
-  const bomCostTotal = project.bomItems
-    .filter((b) => b.status === "approved" || b.status === "pending")
-    .reduce((sum, b) => sum + b.totalCost, 0)
+  const bomCostTotal = totalBomCost(project.bomItems, project.bomTax, project.bomShipping)
   const effectiveGrant = grantOverride ?? (stageKey === "design" ? Math.round(bomCostTotal * 100) / 100 : null)
 
   // Map result to the existing decision format
@@ -356,7 +355,10 @@ export async function POST(
     // Sync to Airtable on approval
     {
       const approvedBom = project!.bomItems.filter((b) => b.status === "approved" || b.status === "pending")
-      const bomCost = approvedBom.reduce((sum, b) => sum + b.totalCost, 0)
+      const bomItemsCost = approvedBom.reduce((sum, b) => sum + b.totalCost, 0)
+      const bomTax = project!.bomTax ?? 0
+      const bomShip = project!.bomShipping ?? 0
+      const bomCost = bomItemsCost + bomTax + bomShip
 
       // Build hours justification with comprehensive project stats
       const sessions = project!.workSessions
@@ -383,8 +385,11 @@ export async function POST(
       if (designSessions.length > 0) lines.push(`  Design: ${designHours.toFixed(1)}h across ${designSessions.length} entr${designSessions.length === 1 ? "y" : "ies"}`)
       if (buildSessions.length > 0) lines.push(`  Build: ${buildHours.toFixed(1)}h across ${buildSessions.length} entr${buildSessions.length === 1 ? "y" : "ies"}`)
       lines.push("")
-      if (approvedBom.length > 0) {
-        lines.push(`BOM (${approvedBom.length} item${approvedBom.length === 1 ? "" : "s"}, $${bomCost.toFixed(2)} total):`)
+      if (approvedBom.length > 0 || bomTax > 0 || bomShip > 0) {
+        const costParts = [`$${bomItemsCost.toFixed(2)} parts`]
+        if (bomTax > 0) costParts.push(`$${bomTax.toFixed(2)} tax`)
+        if (bomShip > 0) costParts.push(`$${bomShip.toFixed(2)} shipping`)
+        lines.push(`BOM (${approvedBom.length} item${approvedBom.length === 1 ? "" : "s"}, ${costParts.join(" + ")} = $${bomCost.toFixed(2)} total):`)
         for (const item of approvedBom) {
           const detail = item.quantity != null && item.quantity > 1
             ? `${item.quantity}x = $${item.totalCost.toFixed(2)}`

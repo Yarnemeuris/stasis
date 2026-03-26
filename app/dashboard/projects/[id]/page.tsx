@@ -65,6 +65,8 @@ interface Project {
   isStarter: boolean;
   starterProjectId: string | null;
   noBomNeeded: boolean;
+  bomTax: number | null;
+  bomShipping: number | null;
 
   coverImage: string | null;
   githubRepo: string | null;
@@ -725,6 +727,22 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     } catch (error) {
       console.error('Failed to update project:', error);
       alert('Failed to update project');
+    }
+  };
+
+  const handleUpdateBomField = async (field: 'bomTax' | 'bomShipping', value: number | null) => {
+    if (!project) return;
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        setProject({ ...project, [field]: value });
+      }
+    } catch (error) {
+      console.error(`Failed to update ${field}:`, error);
     }
   };
 
@@ -1464,7 +1482,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             
             <div className="bg-blue-600/20 border border-blue-600 p-3 mb-4">
               <p className="text-blue-600 text-sm">
-                Your project&apos;s complexity level determines its <span className="font-medium">bit</span> allocation (<span className="font-medium">1 bit</span> = $1). List the parts you need here—your BOM will be reviewed when you submit your design, and you&apos;ll receive a grant card to purchase approved materials. <span className="font-medium">Include shipping and tax in your BOM</span>, as the grant card will be loaded with this exact amount.
+                Your project&apos;s complexity level determines its <span className="font-medium">bit</span> allocation (<span className="font-medium">1 bit</span> = $1). List the parts you need here—your BOM will be reviewed when you submit your design, and you&apos;ll receive a grant card to purchase approved materials. You can <span className="font-medium">add tax and shipping costs separately</span> below the items table.
               </p>
             </div>
 
@@ -1523,17 +1541,59 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </tbody>
                 </table>
                 
+                {/* Tax & Shipping */}
+                <div className="flex gap-4 mt-3 pt-3 border-t border-cream-300">
+                  <div>
+                    <label className="text-brown-800 text-xs uppercase block mb-1">Tax (USD)</label>
+                    {(project.designStatus === "draft" || project.designStatus === "rejected" || project.designStatus === "update_requested") ? (
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        defaultValue={project.bomTax ?? ''}
+                        onBlur={(e) => {
+                          const val = e.target.value ? parseFloat(e.target.value) : null;
+                          if (val !== (project.bomTax ?? null)) handleUpdateBomField('bomTax', val);
+                        }}
+                        className="w-28 bg-white border-2 border-cream-400 text-brown-800 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+                        placeholder="0.00"
+                      />
+                    ) : (
+                      <span className="text-brown-800 text-sm">${formatPrice(project.bomTax ?? 0)}</span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-brown-800 text-xs uppercase block mb-1">Shipping (USD)</label>
+                    {(project.designStatus === "draft" || project.designStatus === "rejected" || project.designStatus === "update_requested") ? (
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        defaultValue={project.bomShipping ?? ''}
+                        onBlur={(e) => {
+                          const val = e.target.value ? parseFloat(e.target.value) : null;
+                          if (val !== (project.bomShipping ?? null)) handleUpdateBomField('bomShipping', val);
+                        }}
+                        className="w-28 bg-white border-2 border-cream-400 text-brown-800 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+                        placeholder="0.00"
+                      />
+                    ) : (
+                      <span className="text-brown-800 text-sm">${formatPrice(project.bomShipping ?? 0)}</span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex flex-col items-end gap-1 mt-3 pt-3 border-t border-cream-400">
                   <div className="flex items-center">
                     <span className="text-brown-800 text-sm uppercase mr-3">Total Estimated Cost (USD):</span>
                     <span className="text-brown-800 font-medium">
-                      ${formatPrice((project.bomItems ?? []).reduce((sum, item) => sum + bomItemTotal(item), 0))}
+                      ${formatPrice((project.bomItems ?? []).reduce((sum, item) => sum + bomItemTotal(item), 0) + (project.bomTax ?? 0) + (project.bomShipping ?? 0))}
                     </span>
                   </div>
                   <div className="flex items-center">
                     <span className="text-brown-800 text-xs mr-3">Estimated cost in bits:</span>
                     <span className="text-brown-800 text-sm">
-                      {Math.ceil((project.bomItems ?? []).reduce((sum, item) => sum + bomItemTotal(item), 0))}&nbsp;bits
+                      {Math.ceil((project.bomItems ?? []).reduce((sum, item) => sum + bomItemTotal(item), 0) + (project.bomTax ?? 0) + (project.bomShipping ?? 0))}&nbsp;bits
                     </span>
                   </div>
                   {project.bitsAwarded != null && project.totalHoursApproved > 0 && (

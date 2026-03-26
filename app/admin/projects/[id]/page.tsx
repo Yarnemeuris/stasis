@@ -107,6 +107,8 @@ interface AdminProject {
   isStarter: boolean;
   starterProjectId: string | null;
   tier: number | null;
+  bomTax: number | null;
+  bomShipping: number | null;
   cartScreenshots: string[];
   createdAt: string;
   submittedAt: string | null;
@@ -1069,10 +1071,10 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
               
               {/* Cost Summary */}
               {(() => {
-                const totalCost = project.bomItems.reduce((sum, item) => sum + bomItemTotal(item), 0);
+                const totalCost = project.bomItems.reduce((sum, item) => sum + bomItemTotal(item), 0) + (project.bomTax ?? 0) + (project.bomShipping ?? 0);
                 const approvedCost = project.bomItems
                   .filter((item) => item.status === 'approved')
-                  .reduce((sum, item) => sum + bomItemTotal(item), 0);
+                  .reduce((sum, item) => sum + bomItemTotal(item), 0) + (project.bomTax ?? 0) + (project.bomShipping ?? 0);
                 const costPerHour = totalHoursClaimed > 0 ? totalCost / totalHoursClaimed : null;
                 const tier = project.tier ? getTierById(project.tier) : null;
                 const bomGrant = project.reviewActions.find(

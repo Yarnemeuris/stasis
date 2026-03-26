@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma"
 import { requirePermission } from "@/lib/admin-auth"
 import { Permission, hasRole, Role } from "@/lib/permissions"
 import { getTierById } from "@/lib/tiers"
+import { totalBomCost } from "@/lib/format"
 import { fetchHackatimeProjectSeconds } from "@/lib/hackatime"
 
 export async function GET(
@@ -140,9 +141,7 @@ export async function GET(
   const avgWorkUnits = entryCount > 0 ? journalHours / entryCount : 0
   const maxWorkUnits = entryCount > 0 ? Math.max(...workSessions.map((s) => s.hoursClaimed)) : 0
   const minWorkUnits = entryCount > 0 ? Math.min(...workSessions.map((s) => s.hoursClaimed)) : 0
-  const bomCost = project.bomItems
-    .filter((b) => b.status === "approved" || b.status === "pending")
-    .reduce((sum, b) => sum + b.totalCost, 0)
+  const bomCost = totalBomCost(project.bomItems, project.bomTax, project.bomShipping)
 
   // Get submission notes if available
   const latestSubmission = await prisma.projectSubmission.findFirst({

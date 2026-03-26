@@ -22,7 +22,7 @@ export async function GET() {
 
   const userId = session.user.id
 
-  const [earned, deducted, bomResult] = await Promise.all([
+  const [earned, deducted, bomResult, taxShippingResult] = await Promise.all([
     prisma.currencyTransaction.aggregate({
       where: { userId, amount: { gt: 0 } },
       _sum: { amount: true },
@@ -38,12 +38,17 @@ export async function GET() {
       },
       select: { totalCost: true },
     }),
+    prisma.project.aggregate({
+      where: { userId, deletedAt: null },
+      _sum: { bomTax: true, bomShipping: true },
+    }),
   ])
 
   const bitsEarned = earned._sum.amount ?? 0
   const bitsDeducted = Math.abs(deducted._sum.amount ?? 0)
   const bitsBalance = bitsEarned - bitsDeducted
-  const bomCost = bomResult.reduce((acc, item) => acc + item.totalCost, 0)
+  const bomItemsCost = bomResult.reduce((acc, item) => acc + item.totalCost, 0)
+  const bomCost = bomItemsCost + (taxShippingResult._sum.bomTax ?? 0) + (taxShippingResult._sum.bomShipping ?? 0)
 
   return NextResponse.json({ bitsEarned, bitsDeducted, bitsBalance, bomCost })
 }

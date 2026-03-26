@@ -60,6 +60,8 @@ interface ProjectData {
   author: { id: string; name: string | null; image: string | null; email: string };
   totalHours: number;
   bomCost: number;
+  bomTax: number;
+  bomShipping: number;
   costPerHour: number;
   bitsPerHour: number | null;
   tierBits: number;

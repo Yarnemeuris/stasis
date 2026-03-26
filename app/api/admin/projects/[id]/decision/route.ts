@@ -8,6 +8,7 @@ import { getTierById, getTierBits, TIERS } from "@/lib/tiers"
 import { appendLedgerEntry, CurrencyTransactionType } from "@/lib/currency"
 import { sendSlackDM } from "@/lib/slack"
 import { syncProjectToAirtable } from "@/lib/airtable"
+import { totalBomCost } from "@/lib/format"
 
 export async function POST(
   request: NextRequest,
@@ -61,9 +62,7 @@ export async function POST(
     }
   }
   // For design approvals, default grant to BOM cost if not explicitly provided
-  const bomCostTotal = project.bomItems
-    .filter((b) => b.status === "approved" || b.status === "pending")
-    .reduce((sum, b) => sum + b.totalCost, 0)
+  const bomCostTotal = totalBomCost(project.bomItems, project.bomTax, project.bomShipping)
   const parsedGrantAmount = typeof grantAmount === "number" && grantAmount > 0
     ? grantAmount
     : (stage === "design" && decision === "approved" ? Math.round(bomCostTotal * 100) / 100 || null : null)

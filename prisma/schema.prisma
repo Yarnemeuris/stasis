@@ -199,6 +199,8 @@ model Project {
   githubRepo       String?
   coverImage       String?
   noBomNeeded      Boolean       @default(false)
+  bomTax           Float?
+  bomShipping      Float?
   cartScreenshots  String[]      @default([])
   tier             Int?
   bitsAwarded           Int?          // Set atomically at build approval; null until then
