@@ -3,7 +3,7 @@
 import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { NoiseOverlay } from '@/app/components/NoiseOverlay';
+
 import Link from 'next/link';
 import { useRoles, Permission } from '@/lib/hooks/useRoles';
 
@@ -43,15 +43,14 @@ export default function AdminLayout({
 
   if (isLoading || !isAuthorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[linear-gradient(#DAD2BF99,#DAD2BF99),url(/noise-smooth.png)] font-mono">
+      <div className="min-h-screen flex items-center justify-center bg-cream-200 font-mono">
         <div className="loader" />
       </div>
     );
   }
 
   return (
-    <>
-      <div className="min-h-screen bg-[linear-gradient(#DAD2BF99,#DAD2BF99),url(/noise-smooth.png)] font-mono relative overflow-hidden">
+      <div className="min-h-screen bg-cream-200 font-mono">
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between border-b border-cream-400">
           <div className="flex items-center gap-4">
@@ -92,7 +91,7 @@ export default function AdminLayout({
 
         {/* Tabs */}
         <div className="border-b border-cream-400">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="px-4">
             <div className="flex overflow-x-auto gap-0">
               <Link href="/admin/review" className={getTabClass('/admin/review')}>
                 Review Queue
@@ -163,8 +162,5 @@ export default function AdminLayout({
           {children}
         </div>
       </div>
-
-      <NoiseOverlay />
-    </>
   );
 }

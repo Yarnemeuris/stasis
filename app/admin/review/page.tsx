@@ -85,7 +85,7 @@ export default function ReviewQueuePage() {
   const [guide, setGuide] = useState('');
   const [nameSearch, setNameSearch] = useState('');
   const [sort, setSort] = useState('');
-  const [page, setPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(20);
   const [statsTab, setStatsTab] = useState<'weekly' | 'allTime'>('weekly');
   const [navigating, setNavigating] = useState(false);
 
@@ -129,7 +129,7 @@ export default function ReviewQueuePage() {
       if (guide) params.set('guide', guide);
       if (nameSearch) params.set('nameSearch', nameSearch);
       if (sort) params.set('sort', sort);
-      params.set('page', page.toString());
+      params.set('limit', '200');
       const res = await fetch(`/api/reviews?${params}`);
       if (res.ok) setData(await res.json());
     } catch (err) {
@@ -137,7 +137,7 @@ export default function ReviewQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [search, category, guide, nameSearch, sort, page]);
+  }, [search, category, guide, nameSearch, sort]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -154,7 +154,7 @@ export default function ReviewQueuePage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearch(searchInput);
-    setPage(1);
+    setVisibleCount(20);
   };
 
   return (
@@ -233,7 +233,7 @@ export default function ReviewQueuePage() {
         <div className="flex gap-2 flex-wrap items-center">
           <span className="text-xs text-brown-800 uppercase tracking-wider mr-1">Filter:</span>
           <button
-            onClick={() => { setCategory(''); setGuide(''); setPage(1); }}
+            onClick={() => { setCategory(''); setGuide(''); setVisibleCount(20); }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
               category === '' && guide === ''
                 ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -243,7 +243,7 @@ export default function ReviewQueuePage() {
             All
           </button>
           <button
-            onClick={() => { setCategory('DESIGN'); setGuide(''); setPage(1); }}
+            onClick={() => { setCategory('DESIGN'); setGuide(''); setVisibleCount(20); }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
               category === 'DESIGN' && guide === ''
                 ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -253,7 +253,7 @@ export default function ReviewQueuePage() {
             Design
           </button>
           <button
-            onClick={() => { setCategory('BUILD'); setGuide(''); setPage(1); }}
+            onClick={() => { setCategory('BUILD'); setGuide(''); setVisibleCount(20); }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
               category === 'BUILD' && guide === ''
                 ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -268,7 +268,7 @@ export default function ReviewQueuePage() {
           {starterProjects.map((sp) => (
             <button
               key={sp.id}
-              onClick={() => { setCategory(''); setGuide(guide === sp.id ? '' : sp.id); setPage(1); }}
+              onClick={() => { setCategory(''); setGuide(guide === sp.id ? '' : sp.id); setVisibleCount(20); }}
               className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
                 guide === sp.id
                   ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -280,7 +280,7 @@ export default function ReviewQueuePage() {
             </button>
           ))}
           <button
-            onClick={() => { setCategory(''); setGuide(guide === 'custom' ? '' : 'custom'); setPage(1); }}
+            onClick={() => { setCategory(''); setGuide(guide === 'custom' ? '' : 'custom'); setVisibleCount(20); }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
               guide === 'custom'
                 ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -294,7 +294,7 @@ export default function ReviewQueuePage() {
           <span className="border-l border-cream-400 mx-1 hidden sm:inline-block" />
 
           <button
-            onClick={() => { setNameSearch(nameSearch === 'devboard' ? '' : 'devboard'); setCategory(''); setGuide(''); setPage(1); }}
+            onClick={() => { setNameSearch(nameSearch === 'devboard' ? '' : 'devboard'); setCategory(''); setGuide(''); setVisibleCount(20); }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
               nameSearch === 'devboard'
                 ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -304,7 +304,7 @@ export default function ReviewQueuePage() {
             Devboard (name)
           </button>
           <button
-            onClick={() => { setNameSearch(nameSearch === 'keyboard' ? '' : 'keyboard'); setCategory(''); setGuide(''); setPage(1); }}
+            onClick={() => { setNameSearch(nameSearch === 'keyboard' ? '' : 'keyboard'); setCategory(''); setGuide(''); setVisibleCount(20); }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
               nameSearch === 'keyboard'
                 ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -314,7 +314,7 @@ export default function ReviewQueuePage() {
             Keyboard (name)
           </button>
           <button
-            onClick={() => { setSort(sort === 'most_hours' ? '' : 'most_hours'); setPage(1); }}
+            onClick={() => { setSort(sort === 'most_hours' ? '' : 'most_hours'); setVisibleCount(20); }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider border cursor-pointer ${
               sort === 'most_hours'
                 ? 'border-orange-500 text-orange-500 bg-orange-500/10'
@@ -352,7 +352,7 @@ export default function ReviewQueuePage() {
           {search && (
             <button
               type="button"
-              onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }}
+              onClick={() => { setSearch(''); setSearchInput(''); setVisibleCount(20); }}
               className="px-3 py-1.5 text-xs uppercase tracking-wider border border-cream-400 text-brown-800 hover:border-orange-500 cursor-pointer"
             >
               Clear
@@ -390,11 +390,11 @@ export default function ReviewQueuePage() {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((item) => {
+                {data.items.slice(0, visibleCount).map((item) => {
                   const tierInfo = item.tier ? getTierById(item.tier) : null;
                   const rowClass = item.claimedByOther
                     ? 'opacity-50'
-                    : item.preReviewed && data.isAdmin
+                    : item.preReviewed
                       ? 'bg-orange-50'
                       : '';
 
@@ -492,26 +492,18 @@ export default function ReviewQueuePage() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {data.totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-center gap-2">
+          {/* Load More */}
+          {data.items.length > visibleCount && (
+            <div className="mt-6 flex items-center justify-center gap-4">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="px-3 py-1.5 text-xs uppercase border border-cream-400 text-brown-800 hover:border-orange-500 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                onClick={() => setVisibleCount((c) => c + 20)}
+                className="px-4 py-2 text-xs uppercase tracking-wider border border-orange-500 text-orange-500 hover:bg-orange-500/10 cursor-pointer"
               >
-                Prev
+                Load More
               </button>
               <span className="text-sm text-brown-800">
-                Page {data.page} of {data.totalPages}
+                Showing {Math.min(visibleCount, data.items.length)} of {data.items.length}
               </span>
-              <button
-                onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                disabled={page >= data.totalPages}
-                className="px-3 py-1.5 text-xs uppercase border border-cream-400 text-brown-800 hover:border-orange-500 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
             </div>
           )}
         </>

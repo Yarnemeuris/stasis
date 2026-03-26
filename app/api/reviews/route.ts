@@ -158,14 +158,12 @@ export async function GET(request: NextRequest) {
     items.sort((a, b) => b.workUnits - a.workUnits)
   }
 
-  // For admins, sort pre-reviewed items to the top
-  if (isAdmin) {
-    items.sort((a, b) => {
-      if (a.preReviewed && !b.preReviewed) return -1
-      if (!a.preReviewed && b.preReviewed) return 1
-      return 0
-    })
-  }
+  // Always sort pre-reviewed (first-pass reviewed) items to the top
+  items.sort((a, b) => {
+    if (a.preReviewed && !b.preReviewed) return -1
+    if (!a.preReviewed && b.preReviewed) return 1
+    return 0
+  })
 
   return NextResponse.json({
     items,
