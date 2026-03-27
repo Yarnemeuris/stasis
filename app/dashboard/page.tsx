@@ -53,6 +53,7 @@ export default function ProjectsPage() {
   }, []);
 
   const [bitsBalance, setBitsBalance] = useState<number | null>(null);
+  const [pendingBits, setPendingBits] = useState<number>(0);
   const [goalPreference, setGoalPreference] = useState<GoalPreference>('stasis');
   const [goalPrizes, setGoalPrizes] = useState<GoalPrize[]>([]);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
@@ -61,6 +62,7 @@ export default function ProjectsPage() {
   const [userPronouns, setUserPronouns] = useState<string | null>(null);
   const [showPronounsModal, setShowPronounsModal] = useState(false);
   const [hoveredPrizeId, setHoveredPrizeId] = useState<string | null>(null);
+  const [hoveredSegment, setHoveredSegment] = useState<'confirmed' | 'pending' | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -75,8 +77,9 @@ export default function ProjectsPage() {
         setProjects(await projectsRes.json());
       }
       if (currencyRes.ok) {
-        const { bitsBalance } = await currencyRes.json();
+        const { bitsBalance, pendingBits: pending } = await currencyRes.json();
         setBitsBalance(bitsBalance);
+        setPendingBits(pending ?? 0);
       }
       if (goalPrefRes.ok) {
         const { goal, goalPrizes: prizes } = await goalPrefRes.json();
@@ -182,6 +185,7 @@ export default function ProjectsPage() {
   const pendingBadges = allBadges.filter(b => b.grantedAt === null);
 
   const actualBits = bitsBalance ?? 0;
+  const confirmedBits = actualBits - pendingBits;
 
   // Progress bar calculations
   const isPrizesGoal = goalPreference === 'prizes';
@@ -194,6 +198,7 @@ export default function ProjectsPage() {
     : getGoalThreshold(goalPreference);
   const qualified = actualBits >= goalThreshold && goalThreshold > 0;
   const progress = goalThreshold > 0 ? Math.min(1, actualBits / goalThreshold) : 0;
+  const confirmedProgress = goalThreshold > 0 ? Math.min(1, confirmedBits / goalThreshold) : 0;
 
   const openGoalPicker = () => {
     setPickerSelection(goalPreference);
@@ -261,7 +266,7 @@ export default function ProjectsPage() {
   } else {
     progressTitle = `progress to qualifying for ${GOAL_LABELS[goalPreference]}`;
     progressSubtitle = (
-      <>Earn <span className="text-orange-500 font-medium">{goalThreshold}&nbsp;bits</span> from building hardware projects to qualify for {GOAL_LABELS[goalPreference]}!</>
+      <>Earn <span className="text-orange-500 font-medium">{goalThreshold}&nbsp;{goalPreference === 'stasis' ? 'pending bits' : 'bits'}</span> from building hardware projects to qualify for {GOAL_LABELS[goalPreference]}!</>
     );
   }
 
@@ -311,17 +316,41 @@ export default function ProjectsPage() {
         {/* Bits Progress */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-brown-800 text-xs uppercase tracking-wide">
-              Bits Earned ({actualBits}/{goalThreshold})
-            </p>
+            <div>
+              <p className="text-brown-800 text-xs uppercase tracking-wide">
+                Bits Earned ({goalPreference === 'stasis' ? actualBits : confirmedBits}/{goalThreshold})
+              </p>
+              {pendingBits > 0 && (
+                <p className="text-cream-600 text-xs">{pendingBits.toLocaleString()} bits pending build review</p>
+              )}
+            </div>
             {qualified && <span className="text-green-500 text-xs">✓</span>}
           </div>
           <div className={`relative ${isPrizesGoal && sortedPrizes.length > 0 ? 'mr-[20px]' : ''}`}>
             <div className="h-8 bg-cream-200 border-2 border-cream-400 relative overflow-hidden">
-              <div
-                className="h-full bg-orange-500 transition-all duration-500"
-                style={{ width: `${progress * 100}%` }}
-              />
+              {/* Confirmed bits (orange) */}
+              {confirmedBits > 0 && (
+                <div
+                  className="absolute inset-y-0 left-0 bg-orange-500 transition-all duration-500 z-[1] cursor-default"
+                  style={{ width: `${confirmedProgress * 100}%` }}
+                  onMouseEnter={() => setHoveredSegment('confirmed')}
+                  onMouseLeave={() => setHoveredSegment(null)}
+                />
+              )}
+              {/* Pending bits (diagonal orange stripes) */}
+              {pendingBits > 0 && (
+                <div
+                  className="absolute inset-y-0 transition-all duration-500 z-[1] cursor-default"
+                  style={{
+                    left: `${confirmedProgress * 100}%`,
+                    width: `${(progress - confirmedProgress) * 100}%`,
+                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--color-orange-500) 4px, var(--color-orange-500) 8px)',
+                    opacity: 0.4,
+                  }}
+                  onMouseEnter={() => setHoveredSegment('pending')}
+                  onMouseLeave={() => setHoveredSegment(null)}
+                />
+              )}
               {/* Vertical marker lines inside the bar for each prize */}
               {isPrizesGoal && sortedPrizes.length > 0 && goalThreshold > 0 && sortedPrizes.map((prize) => {
                 const pct = (prize.price / goalThreshold) * 100;
@@ -339,12 +368,36 @@ export default function ProjectsPage() {
                   />
                 );
               })}
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
                 <span className={`text-xs font-medium ${qualified ? 'text-white' : 'text-brown-800'}`}>
-                  {actualBits} / {goalThreshold}&nbsp;bits
+                  {goalPreference === 'stasis' ? actualBits : confirmedBits} / {goalThreshold}&nbsp;bits
                 </span>
               </div>
             </div>
+
+            {/* Segment tooltip (outside overflow-hidden bar) */}
+            {hoveredSegment && (
+              <div
+                className="absolute z-30 pointer-events-none"
+                style={{
+                  bottom: '100%',
+                  left: hoveredSegment === 'confirmed'
+                    ? `${(confirmedProgress / 2) * 100}%`
+                    : `${(confirmedProgress + (progress - confirmedProgress) / 2) * 100}%`,
+                  transform: 'translateX(-50%)',
+                  marginBottom: '8px',
+                }}
+              >
+                <div className="bg-brown-800 text-cream-100 border-2 border-cream-400 px-3 py-2 whitespace-nowrap">
+                  <div className="text-xs font-bold">
+                    {hoveredSegment === 'confirmed'
+                      ? `${confirmedBits.toLocaleString()} Bits Approved`
+                      : `${pendingBits.toLocaleString()} Bits Pending Build Review`
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Prize squares on progress bar */}
             {isPrizesGoal && sortedPrizes.length > 0 && goalThreshold > 0 && sortedPrizes.map((prize) => {
