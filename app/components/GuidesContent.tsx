@@ -51,16 +51,16 @@ const mdxComponents: MDXComponents = {
     <h4 className="text-brown-800 font-medium mt-4 mb-2">{children as React.ReactNode}</h4>
   ),
   p: ({ children }) => (
-    <p className="text-brown-800">{children as React.ReactNode}</p>
+    <p className="text-brown-800 font-sans">{children as React.ReactNode}</p>
   ),
   ul: ({ children }) => (
-    <ul className="list-disc list-inside text-brown-800 space-y-1">{children as React.ReactNode}</ul>
+    <ul className="list-disc list-inside text-brown-800 space-y-1 font-sans">{children as React.ReactNode}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal list-inside text-brown-800 space-y-1">{children as React.ReactNode}</ol>
+    <ol className="list-decimal list-inside text-brown-800 space-y-1 font-sans">{children as React.ReactNode}</ol>
   ),
   li: ({ children }) => (
-    <li className="text-brown-800">{children as React.ReactNode}</li>
+    <li className="text-brown-800 font-sans">{children as React.ReactNode}</li>
   ),
   strong: ({ children }) => (
     <strong className="font-bold">{children as React.ReactNode}</strong>
@@ -69,7 +69,7 @@ const mdxComponents: MDXComponents = {
     <em className="italic">{children as React.ReactNode}</em>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 [&_p]:text-orange-600 [&_p]:m-0">{children as React.ReactNode}</blockquote>
+    <blockquote className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 font-sans [&_p]:text-orange-600 [&_p]:m-0">{children as React.ReactNode}</blockquote>
   ),
   table: ({ children }) => (
     <div className="overflow-x-auto -mx-1 px-1">
@@ -80,7 +80,7 @@ const mdxComponents: MDXComponents = {
     <th className="text-left text-brown-800 font-medium border-b border-cream-400 pb-2 pr-4">{children as React.ReactNode}</th>
   ),
   td: ({ children }) => (
-    <td className="text-brown-800 border-b border-cream-400 py-2 pr-4">{children as React.ReactNode}</td>
+    <td className="text-brown-800 font-sans border-b border-cream-400 py-2 pr-4">{children as React.ReactNode}</td>
   ),
 };
 
@@ -113,7 +113,7 @@ export default function GuidesContent({ activePage: controlledPage, basePath }: 
         <h3 className="text-brown-800 text-base md:text-lg mb-2 mt-4">{children as React.ReactNode}</h3>
       ) : null,
       p: ({ children }) => currentSection === faqTab ? (
-        <p className="text-brown-800 pb-4 border-b border-cream-400 last-of-type:border-0">{children as React.ReactNode}</p>
+        <p className="text-brown-800 font-sans pb-4 border-b border-cream-400 last-of-type:border-0">{children as React.ReactNode}</p>
       ) : null,
       a: ({ children, href }) => (
         <a href={href} className="text-orange-500 underline">{children as React.ReactNode}</a>
