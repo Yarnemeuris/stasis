@@ -33,7 +33,7 @@ const libreBarcode39 = Libre_Barcode_39({
 export const metadata: Metadata = {
   metadataBase: new URL("https://stasis.hackclub.com"),
   title: "Stasis | High School Hardware Hackathon in Austin, TX",
-  description: "A High School Hardware Hackathon in Austin, TX on May 15-18. Build hardware projects, earn badges, and qualify for up to $350 in funding.",
+  description: "A High School Hardware Hackathon in Austin, TX on May 15-18. Build hardware projects, earn badges, and qualify for up to $300 in funding.",
   keywords: ["hackathon", "hardware", "high school", "Austin TX", "Hack Club", "electronics", "PCB", "maker", "engineering", "STEM"],
   themeColor:"#C4B9A2",
   icons: {
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://stasis.hackclub.com" },
   openGraph: {
     title: "Stasis | High School Hardware Hackathon in Austin, TX",
-    description: "A High School Hardware Hackathon in Austin, TX on May 15-18. Build hardware projects, earn badges, and qualify for up to $350 in funding.",
+    description: "A High School Hardware Hackathon in Austin, TX on May 15-18. Build hardware projects, earn badges, and qualify for up to $300 in funding.",
     siteName: "Stasis",
     type: "website",
     images: [
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Stasis | High School Hardware Hackathon in Austin, TX",
-    description: "A High School Hardware Hackathon in Austin, TX on May 15-18. Build hardware projects, earn badges, and qualify for up to $350 in funding.",
+    description: "A High School Hardware Hackathon in Austin, TX on May 15-18. Build hardware projects, earn badges, and qualify for up to $300 in funding.",
     images: ["/og-image.jpg"],
   },
 };

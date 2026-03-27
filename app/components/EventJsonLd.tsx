@@ -4,7 +4,7 @@ export default function EventJsonLd() {
     '@type': 'Event',
     name: 'Stasis',
     description:
-      'A High School Hardware Hackathon in Austin, TX. Build hardware projects, earn badges, and qualify for up to $350 in funding.',
+      'A High School Hardware Hackathon in Austin, TX. Build hardware projects, earn badges, and qualify for up to $300 in funding.',
     startDate: '2025-05-15',
     endDate: '2025-05-18',
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
