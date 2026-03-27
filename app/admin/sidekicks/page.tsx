@@ -159,6 +159,7 @@ export default function AdminSidekicksPage() {
     userName: string | null;
     currentSidekickId?: string;
   } | null>(null);
+  const [assigningAll, setAssigningAll] = useState(false);
 
   useEffect(() => {
     fetchSidekicks();
@@ -478,9 +479,40 @@ export default function AdminSidekicksPage() {
       {/* Unassigned Users */}
       {unassignedUsers.length > 0 && (
         <div className="space-y-4">
-          <p className="text-brown-800 text-sm uppercase">
-            {unassignedUsers.length} unassigned user{unassignedUsers.length !== 1 ? 's' : ''}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-brown-800 text-sm uppercase">
+              {unassignedUsers.length} unassigned user{unassignedUsers.length !== 1 ? 's' : ''}
+            </p>
+            <button
+              onClick={async () => {
+                if (!confirm(`Assign all ${unassignedUsers.length} unassigned user(s) to sidekicks?`)) return;
+                setAssigningAll(true);
+                try {
+                  const res = await fetch('/api/admin/sidekick/reassign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assignAllUnassigned: true }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    alert(`Assigned ${data.assigned} user(s) to sidekicks.`);
+                    fetchSidekicks();
+                  } else {
+                    const data = await res.json();
+                    alert(`Failed: ${data.error || 'Unknown error'}`);
+                  }
+                } catch (error) {
+                  console.error('Failed to assign all:', error);
+                } finally {
+                  setAssigningAll(false);
+                }
+              }}
+              disabled={assigningAll}
+              className="px-3 py-1.5 text-xs uppercase bg-purple-600 text-white hover:bg-purple-500 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {assigningAll ? 'Assigning...' : 'Assign All'}
+            </button>
+          </div>
           <div className="bg-cream-100 border-2 border-cream-400 p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {unassignedUsers.map((user) => (
