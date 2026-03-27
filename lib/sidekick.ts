@@ -16,7 +16,7 @@ export async function findLeastLoadedSidekick(excludeId?: string, pronouns?: str
   const allIds = allSidekickRoles.map((r) => r.userId);
 
   // she/her users → she/her sidekicks only (fallback to all if none exist)
-  // everyone else → unrestricted pool (any sidekick)
+  // everyone else → full pool, least-loaded
   let pool = allIds;
   if (pronouns === "she/her") {
     const sheHerIds = allSidekickRoles
@@ -32,18 +32,6 @@ export async function findLeastLoadedSidekick(excludeId?: string, pronouns?: str
   });
 
   const countMap = new Map(counts.map((c) => [c.sidekickId, c._count.id]));
-
-  // For non-she/her users, ~25% chance to include she/her sidekicks in the pool
-  // (they already receive all she/her users exclusively)
-  if (pronouns !== "she/her") {
-    const sheHerIds = allSidekickRoles
-      .filter((r) => r.user.pronouns === "she/her")
-      .map((r) => r.userId);
-    if (sheHerIds.length > 0 && Math.random() > 0.25) {
-      const nonSheHerPool = pool.filter((id) => !sheHerIds.includes(id));
-      if (nonSheHerPool.length > 0) pool = nonSheHerPool;
-    }
-  }
 
   // Pick the least-loaded from the pool
   let minId = pool[0];
