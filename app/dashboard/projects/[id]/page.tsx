@@ -15,6 +15,8 @@ import { formatPrice, bomItemTotal } from "@/lib/format";
 import { TIERS } from "@/lib/tiers";
 import { STARTER_PROJECTS } from "@/lib/starter-projects";
 import { BomCsvImportModal } from '@/app/components/projects/BomCsvImportModal';
+import PreflightChecks from '@/app/components/projects/PreflightChecks';
+import type { PreflightCheck } from '@/app/components/projects/PreflightChecks';
 
 type ProjectStatus = "draft" | "in_review" | "approved" | "rejected" | "update_requested";
 
@@ -135,6 +137,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [showDesignUnsubmitDialog, setShowDesignUnsubmitDialog] = useState(false);
   const [showBuildUnsubmitDialog, setShowBuildUnsubmitDialog] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [preflightChecks, setPreflightChecks] = useState<PreflightCheck[] | null>(null);
+  const [preflightLoading, setPreflightLoading] = useState(false);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
+  const [preflightCanSubmit, setPreflightCanSubmit] = useState(true);
   
   const [bomForm, setBomForm] = useState({
     name: '',
@@ -211,6 +217,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     } finally {
       setSavingField(false);
     }
+  };
+
+  const toggleProjectTag = async (tag: ProjectTag) => {
+    if (!project || !canEdit) return;
+    const currentTags = project.tags || [];
+    const newTags = currentTags.includes(tag)
+      ? currentTags.filter((t) => t !== tag)
+      : [...currentTags, tag];
+    await saveField('tags', { tags: newTags });
   };
 
   const handleClaimBadge = async (badge: BadgeType) => {
@@ -422,6 +437,41 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     window.addEventListener('stasis:replay-project-tutorial', handler);
     return () => window.removeEventListener('stasis:replay-project-tutorial', handler);
   }, []);
+
+  const runPreflight = async () => {
+    if (!project) return;
+    setPreflightChecks(null);
+    setPreflightError(null);
+    setPreflightLoading(true);
+    setPreflightCanSubmit(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/preflight`);
+      if (res.ok) {
+        const data = await res.json();
+        setPreflightChecks(data.checks);
+        setPreflightCanSubmit(data.canSubmit);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setPreflightError(data.error || 'Failed to run pre-submission checks');
+      }
+    } catch {
+      setPreflightError('Could not connect — check your internet connection');
+    } finally {
+      setPreflightLoading(false);
+    }
+  };
+
+  const openSubmitDialog = (stage: "design" | "build") => {
+    setPreflightChecks(null);
+    setPreflightError(null);
+    setPreflightCanSubmit(true);
+    if (stage === "design") {
+      setShowDesignSubmitDialog(true);
+    } else {
+      setShowBuildSubmitDialog(true);
+    }
+    runPreflight();
+  };
 
   const handleSubmitStage = async (stage: "design" | "build") => {
     if (!project) return;
@@ -1052,6 +1102,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </span>
                 )}
               </div>
+
             </div>
 
             {/* Quick Actions */}
@@ -1949,6 +2000,34 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </div>
                 )}
               </div>
+
+              {/* Hardware Categories */}
+              <div className="border-t border-cream-400 pt-4 mt-5">
+                <p className="text-brown-800 text-xs uppercase mb-1">Includes</p>
+                <p className="text-cream-600 text-xs mb-2">Select what your project contains - <span className="underline">setting this will help your review go faster</span>.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => toggleProjectTag('PCB' as ProjectTag)}
+                    className={`px-4 py-2 text-sm uppercase tracking-wide transition-colors cursor-pointer ${
+                      project.tags?.includes('PCB' as ProjectTag)
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-cream-300 text-brown-800 hover:bg-cream-400 border border-cream-400'
+                    }`}
+                  >
+                    Custom PCB
+                  </button>
+                  <button
+                    onClick={() => toggleProjectTag('CAD' as ProjectTag)}
+                    className={`px-4 py-2 text-sm uppercase tracking-wide transition-colors cursor-pointer ${
+                      project.tags?.includes('CAD' as ProjectTag)
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-cream-300 text-brown-800 hover:bg-cream-400 border border-cream-400'
+                    }`}
+                  >
+                    Custom CAD
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1958,7 +2037,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             {(project.designStatus === "draft" || project.designStatus === "rejected" || project.designStatus === "update_requested") && (
               <button
                 data-tutorial="submit"
-                onClick={() => setShowDesignSubmitDialog(true)}
+                onClick={() => openSubmitDialog('design')}
                 disabled={submitting || !canSubmitDesign}
                 className="flex-1 min-w-[200px] bg-green-600 hover:bg-green-500 disabled:bg-cream-300 disabled:text-cream-500 disabled:cursor-not-allowed text-white py-3 uppercase tracking-wider transition-colors cursor-pointer"
               >
@@ -1979,7 +2058,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             {project.designStatus === "approved" && (project.buildStatus === "draft" || project.buildStatus === "rejected" || project.buildStatus === "approved" || project.buildStatus === "update_requested") && (
               <button
                 data-tutorial="submit"
-                onClick={() => setShowBuildSubmitDialog(true)}
+                onClick={() => openSubmitDialog('build')}
                 disabled={submitting || !canSubmitBuild}
                 className="flex-1 min-w-[200px] bg-green-600 hover:bg-green-500 disabled:bg-cream-300 disabled:text-cream-500 disabled:cursor-not-allowed text-white py-3 uppercase tracking-wider transition-colors cursor-pointer"
               >
@@ -2088,7 +2167,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           {/* Design Submit Confirmation Dialog */}
           {showDesignSubmitDialog && (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-              <div className="bg-cream-100 border-2 border-cream-400 max-w-md w-full p-6">
+              <div className="bg-cream-100 border-2 border-cream-400 max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
                 <h3 className="text-brown-800 text-xl uppercase tracking-wide mb-4">Submit Design for Review?</h3>
                 <p className="text-brown-800 text-sm leading-relaxed mb-4">
                   Your design, BOM, and complexity level will be reviewed. Once approved, your badges will be granted and you&apos;ll receive a grant card to purchase materials!
@@ -2100,6 +2179,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </Link>
                   .
                 </p>
+                <PreflightChecks
+                  checks={preflightChecks}
+                  loading={preflightLoading}
+                  error={preflightError}
+                  onRetry={runPreflight}
+                  onTagAdd={async (tag) => {
+                    await toggleProjectTag(tag as ProjectTag);
+                    const suggestionKey = tag === 'PCB' ? 'suggest_pcb_tag' : 'suggest_cad_tag';
+                    setPreflightChecks((prev) => prev ? prev.filter((c) => c.key !== suggestionKey) : prev);
+                  }}
+                />
                 <div className="mb-4">
                   <label className="block text-brown-800 text-sm font-medium uppercase tracking-wide mb-1">Note to reviewer (optional)</label>
                   <p className="text-brown-600 text-xs mb-2">Anything you&apos;d like the reviewer to know about your project?</p>
@@ -2120,7 +2210,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </button>
                   <button
                     onClick={handleSubmitDesign}
-                    className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 uppercase tracking-wider transition-colors cursor-pointer"
+                    disabled={preflightLoading || (!preflightCanSubmit && !preflightError)}
+                    className="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-cream-300 disabled:text-cream-500 disabled:cursor-not-allowed text-white py-2 uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Submit Design
                   </button>
@@ -2132,7 +2223,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           {/* Build Submit Confirmation Dialog */}
           {showBuildSubmitDialog && (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-              <div className="bg-cream-100 border-2 border-cream-400 max-w-md w-full p-6">
+              <div className="bg-cream-100 border-2 border-cream-400 max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
                 <h3 className="text-brown-800 text-xl uppercase tracking-wide mb-4">Submit Build for Review?</h3>
                 <p className="text-brown-800 text-sm leading-relaxed mb-4">
                   Your build work will be reviewed. Once approved, you&apos;ll earn the <span className="text-orange-500 font-medium">bits</span> for this project&apos;s complexity level!
@@ -2144,6 +2235,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </Link>
                   .
                 </p>
+                <PreflightChecks
+                  checks={preflightChecks}
+                  loading={preflightLoading}
+                  error={preflightError}
+                  onRetry={runPreflight}
+                  onTagAdd={async (tag) => {
+                    await toggleProjectTag(tag as ProjectTag);
+                    const suggestionKey = tag === 'PCB' ? 'suggest_pcb_tag' : 'suggest_cad_tag';
+                    setPreflightChecks((prev) => prev ? prev.filter((c) => c.key !== suggestionKey) : prev);
+                  }}
+                />
                 <div className="mb-4">
                   <label className="block text-brown-800 text-sm font-medium uppercase tracking-wide mb-1">Note to reviewer (optional)</label>
                   <p className="text-brown-600 text-xs mb-2">Anything you&apos;d like the reviewer to know about your project?</p>
@@ -2164,7 +2266,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </button>
                   <button
                     onClick={handleSubmitBuild}
-                    className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 uppercase tracking-wider transition-colors cursor-pointer"
+                    disabled={preflightLoading || (!preflightCanSubmit && !preflightError)}
+                    className="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-cream-300 disabled:text-cream-500 disabled:cursor-not-allowed text-white py-2 uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Submit Build
                   </button>
