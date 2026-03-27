@@ -67,11 +67,11 @@ function formatWaitTime(ms: number): string {
 }
 
 const TIER_COLORS: Record<number, string> = {
-  1: 'bg-gray-200 text-gray-800',
-  2: 'bg-green-200 text-green-800',
-  3: 'bg-blue-200 text-blue-800',
-  4: 'bg-purple-200 text-purple-800',
-  5: 'bg-orange-200 text-orange-800',
+  1: 'bg-cream-300 text-cream-600',
+  2: 'bg-green-100 text-green-700',
+  3: 'bg-blue-100 text-blue-700',
+  4: 'bg-purple-100 text-purple-700',
+  5: 'bg-orange-100 text-orange-700',
 };
 
 export default function ReviewQueuePage() {
@@ -351,7 +351,7 @@ export default function ReviewQueuePage() {
                   const rowClass = item.claimedByOther
                     ? 'opacity-50'
                     : item.preReviewed
-                      ? 'bg-orange-50'
+                      ? 'bg-orange-100'
                       : '';
 
                   return (
@@ -393,8 +393,8 @@ export default function ReviewQueuePage() {
                       <td className="px-3 py-3">
                         <span className={`text-xs uppercase px-2 py-0.5 ${
                           item.category === 'DESIGN'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-green-100 text-green-800'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-green-100 text-green-700'
                         }`}>
                           {item.category}
                         </span>

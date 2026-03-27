@@ -439,18 +439,18 @@ export default function ReviewDetailPage() {
     <div className="space-y-6">
       {/* ── Claim Warning Banner ── */}
       {claimedByOther && (
-        <div className="bg-red-50 border-2 border-red-300 p-4 flex items-center justify-between">
+        <div className="bg-red-500/10 border-2 border-red-500/40 p-4 flex items-center justify-between">
           <div>
-            <p className="text-red-800 font-medium text-sm uppercase">Claimed by another reviewer</p>
+            <p className="text-red-600 font-medium text-sm uppercase">Claimed by another reviewer</p>
             {claimExpiry && (
-              <p className="text-red-700 text-xs mt-1">
+              <p className="text-red-600/80 text-xs mt-1">
                 Expires: {claimExpiry.toLocaleTimeString()}
               </p>
             )}
           </div>
           <button
             onClick={skipToNext}
-            className="px-3 py-1.5 text-xs uppercase border border-red-500 text-red-500 hover:bg-red-500/10 cursor-pointer"
+            className="px-3 py-1.5 text-xs uppercase border border-red-500 text-red-600 hover:bg-red-500/10 cursor-pointer"
           >
             Skip to Next
           </button>
@@ -459,31 +459,31 @@ export default function ReviewDetailPage() {
 
       {/* ── Fraud / Trust Warning ── */}
       {project.user.fraudConvicted && showFraudWarning && (
-        <div className="bg-red-100 border-2 border-red-500 p-6 relative">
+        <div className="bg-red-500/15 border-2 border-red-500 p-6 relative">
           <button
             onClick={() => setShowFraudWarning(false)}
-            className="absolute top-2 right-3 text-red-400 hover:text-red-600 text-lg cursor-pointer"
+            className="absolute top-2 right-3 text-red-400 hover:text-red-300 text-lg cursor-pointer"
           >
             ×
           </button>
           <div className="flex items-center gap-3 mb-2">
             <span className="text-3xl">⚠️</span>
-            <h2 className="text-red-800 text-lg uppercase tracking-wider font-bold">Fraud Alert</h2>
+            <h2 className="text-red-600 text-lg uppercase tracking-wider font-bold">Fraud Alert</h2>
           </div>
-          <p className="text-red-700 text-sm">
+          <p className="text-red-600/80 text-sm">
             This user has been flagged for fraud. Their account is suspended. Exercise extreme caution when reviewing this submission.
           </p>
         </div>
       )}
 
       {hackatimeTrustLevel === 'red' && !project.user.fraudConvicted && (
-        <div className="bg-red-50 border-2 border-red-300 p-4">
+        <div className="bg-red-500/10 border-2 border-red-500/40 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xl">🔴</span>
               <div>
-                <p className="text-red-800 font-medium text-sm uppercase">Hackatime Trust: Convicted</p>
-                <p className="text-red-700 text-xs mt-1">This user has been convicted on Hackatime for fraud. They should be marked as fraud on this platform too.</p>
+                <p className="text-red-600 font-medium text-sm uppercase">Hackatime Trust: Convicted</p>
+                <p className="text-red-600/80 text-xs mt-1">This user has been convicted on Hackatime for fraud. They should be marked as fraud on this platform too.</p>
               </div>
             </div>
             <button
@@ -566,13 +566,13 @@ export default function ReviewDetailPage() {
             </div>
             <div className="flex gap-2 flex-shrink-0">
               <span className={`text-xs uppercase px-2 py-0.5 ${
-                submission.stage === 'DESIGN' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                submission.stage === 'DESIGN' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
               }`}>
                 {submission.stage}
               </span>
               {tierInfo && (
                 <span className={`text-xs px-2 py-0.5 ${
-                  { 1: 'bg-gray-200 text-gray-800', 2: 'bg-green-200 text-green-800', 3: 'bg-blue-200 text-blue-800', 4: 'bg-purple-200 text-purple-800', 5: 'bg-orange-200 text-orange-800' }[project.tier!] || ''
+                  { 1: 'bg-cream-300 text-cream-600', 2: 'bg-green-100 text-green-700', 3: 'bg-blue-100 text-blue-700', 4: 'bg-purple-100 text-purple-700', 5: 'bg-orange-100 text-orange-700' }[project.tier!] || ''
                 }`}>
                   {tierInfo.name} ({tierInfo.bits} bits)
                 </span>
@@ -590,11 +590,11 @@ export default function ReviewDetailPage() {
                 {project.user.fraudConvicted ? (
                   <span className="text-xs px-2 py-0.5 bg-red-600 text-white uppercase">Fraud</span>
                 ) : hackatimeTrustLevel === 'red' ? (
-                  <span className="text-xs px-2 py-0.5 bg-red-100 text-red-800 border border-red-300 uppercase">Convicted</span>
+                  <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 border border-red-300 uppercase">Convicted</span>
                 ) : hackatimeTrustLevel === 'green' ? (
-                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 border border-green-300 uppercase">Trusted</span>
+                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 border border-green-300 uppercase">Trusted</span>
                 ) : (
-                  <span className="text-xs px-2 py-0.5 bg-cream-200 text-cream-700 border border-cream-400 uppercase">Unscored</span>
+                  <span className="text-xs px-2 py-0.5 bg-cream-200 text-brown-800 border border-cream-400 uppercase">Unscored</span>
                 )}
               </div>
               <p className="text-cream-600 text-xs">
@@ -670,7 +670,7 @@ export default function ReviewDetailPage() {
           <div className="space-y-2">
             {ghChecks.map((check) => (
               <div key={check.key} className="flex items-center gap-2 text-sm">
-                <span className={check.passed ? 'text-green-600' : 'text-red-500'}>
+                <span className={check.passed ? 'text-green-600' : 'text-red-600'}>
                   {check.passed ? '\u2713' : '\u2717'}
                 </span>
                 <span className="text-brown-800">{check.label}</span>
@@ -696,7 +696,7 @@ export default function ReviewDetailPage() {
                   .catch((err) => setGhChecksError(String(err)))
                   .finally(() => setGhChecksLoading(false));
               }}
-              className="mt-2 text-xs text-brown-600 underline hover:text-brown-800"
+              className="mt-2 text-xs text-cream-600 underline hover:text-brown-800"
             >
               Retry checks
             </button>
@@ -708,8 +708,8 @@ export default function ReviewDetailPage() {
 
       {/* ── Conflict Warning Card ── */}
       {conflicts.length > 0 && (
-        <div className="bg-yellow-50 border-2 border-yellow-300 p-4">
-          <p className="text-yellow-800 font-medium text-sm uppercase mb-2">
+        <div className="bg-yellow-500/10 border-2 border-yellow-500/40 p-4">
+          <p className="text-yellow-700 font-medium text-sm uppercase mb-2">
             Conflict: Author has other active submissions
           </p>
           <ul className="space-y-1">
@@ -717,7 +717,7 @@ export default function ReviewDetailPage() {
               <li key={c.id}>
                 <Link
                   href={`/admin/review/${c.id}`}
-                  className="text-yellow-700 text-sm hover:underline"
+                  className="text-yellow-700/80 text-sm hover:underline"
                 >
                   {c.project.title}
                 </Link>
@@ -791,7 +791,7 @@ export default function ReviewDetailPage() {
                   <span className="text-brown-800">
                     {(hp.totalSeconds / 3600).toFixed(1)}h
                     {hp.hoursApproved !== null && (
-                      <span className="text-green-700 ml-2">({hp.hoursApproved}h approved)</span>
+                      <span className="text-green-600 ml-2">({hp.hoursApproved}h approved)</span>
                     )}
                   </span>
                 </div>
@@ -914,9 +914,9 @@ export default function ReviewDetailPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-brown-800">${bomItemTotal(item).toFixed(2)}</span>
                     <span className={`text-xs px-1 ${
-                      item.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      item.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      item.status === 'approved' ? 'bg-green-100 text-green-700' :
+                      item.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
                     }`}>{item.status}</span>
                   </div>
                 </div>
@@ -1052,8 +1052,8 @@ export default function ReviewDetailPage() {
                       key={i}
                       className={`flex items-center gap-1.5 px-2.5 py-1 text-xs border cursor-pointer transition-colors select-none ${
                         checkedJustifications.has(i)
-                          ? 'bg-green-100 border-green-500 text-green-800'
-                          : 'border-cream-400 text-brown-800 hover:border-green-400 hover:bg-green-50'
+                          ? 'bg-green-100 border-green-600 text-green-700'
+                          : 'border-cream-400 text-brown-800 hover:border-green-600/60 hover:bg-green-100'
                       }`}
                     >
                       <input
@@ -1084,8 +1084,8 @@ export default function ReviewDetailPage() {
                       key={i}
                       className={`flex items-center gap-1.5 px-2.5 py-1 text-xs border cursor-pointer transition-colors select-none ${
                         checkedFeedback.has(i)
-                          ? 'bg-yellow-100 border-yellow-500 text-yellow-800'
-                          : 'border-cream-400 text-brown-800 hover:border-yellow-400 hover:bg-yellow-50'
+                          ? 'bg-yellow-100 border-yellow-600 text-yellow-700'
+                          : 'border-cream-400 text-brown-800 hover:border-yellow-600/60 hover:bg-yellow-100'
                       }`}
                     >
                       <input
@@ -1108,8 +1108,8 @@ export default function ReviewDetailPage() {
             </div>
 
             {project.user.fraudConvicted && (
-              <div className="mb-3 bg-red-50 border border-red-300 p-3">
-                <p className="text-red-800 text-xs uppercase">Fraud-convicted user — only rejection is allowed</p>
+              <div className="mb-3 bg-red-500/10 border border-red-500/40 p-3">
+                <p className="text-red-600 text-xs uppercase">Fraud-convicted user — only rejection is allowed</p>
               </div>
             )}
 
@@ -1120,9 +1120,9 @@ export default function ReviewDetailPage() {
               const fpGrant = firstPassReview.grantOverride ?? Math.round(project.bomCost * 100) / 100;
               return (
                 <div>
-                  <div className="mb-4 bg-orange-50 border border-orange-300 p-4">
+                  <div className="mb-4 bg-orange-500/10 border border-orange-500/40 p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-orange-800 text-xs uppercase font-medium">
+                      <p className="text-orange-600 text-xs uppercase font-medium">
                         First-pass review by {firstPassReview.reviewerName || 'Reviewer'}
                       </p>
                       <span className="text-cream-600 text-xs">
@@ -1157,7 +1157,7 @@ export default function ReviewDetailPage() {
                       </div>
                       <div>
                         <p className="text-cream-600 text-xs uppercase">Result</p>
-                        <p className="text-green-700 text-sm font-medium uppercase">{firstPassReview.result}</p>
+                        <p className="text-green-600 text-sm font-medium uppercase">{firstPassReview.result}</p>
                       </div>
                     </div>
 
@@ -1219,8 +1219,8 @@ export default function ReviewDetailPage() {
             })() : (
               <>
                 {!isAdmin && (
-                  <div className="mb-3 bg-blue-50 border border-blue-300 p-3">
-                    <p className="text-blue-800 text-xs">Your approval will be recorded as a first-pass review. An admin will do the final approval, which triggers Airtable sync and bit grants.</p>
+                  <div className="mb-3 bg-blue-500/10 border border-blue-500/40 p-3">
+                    <p className="text-blue-700 text-xs">Your approval will be recorded as a first-pass review. An admin will do the final approval, which triggers Airtable sync and bit grants.</p>
                   </div>
                 )}
 
@@ -1275,9 +1275,9 @@ function ReviewCard({ review, defaultExpanded }: {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const resultColor = {
-    APPROVED: 'text-green-700 bg-green-50 border-green-300',
-    RETURNED: 'text-yellow-700 bg-yellow-50 border-yellow-300',
-    REJECTED: 'text-red-700 bg-red-50 border-red-300',
+    APPROVED: 'text-green-700 bg-green-100 border-green-300',
+    RETURNED: 'text-yellow-700 bg-yellow-100 border-yellow-300',
+    REJECTED: 'text-red-700 bg-red-100 border-red-300',
   }[review.result] || '';
 
   const frozenTierInfo = review.frozenTier ? getTierById(review.frozenTier) : null;
@@ -1290,10 +1290,10 @@ function ReviewCard({ review, defaultExpanded }: {
       >
         <div className="flex items-center gap-2 flex-wrap">
           {review.invalidated && (
-            <span className="text-xs px-1 bg-cream-300 text-cream-700 uppercase">Outdated</span>
+            <span className="text-xs px-1 bg-cream-300 text-cream-500 uppercase">Outdated</span>
           )}
           {review.isAdminReview && (
-            <span className="text-xs px-1 bg-purple-100 text-purple-800 uppercase">Admin</span>
+            <span className="text-xs px-1 bg-purple-100 text-purple-700 uppercase">Admin</span>
           )}
           <span className={`text-xs px-2 py-0.5 border ${resultColor}`}>
             {review.result}
