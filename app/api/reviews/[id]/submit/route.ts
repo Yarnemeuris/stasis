@@ -448,6 +448,11 @@ export async function POST(
       if (tierInfo) lines.push(`Tier: ${tierInfo.name} (${tierInfo.bits} bits, ${tierInfo.minHours}-${tierInfo.maxHours === Infinity ? "67+" : tierInfo.maxHours}h range)`)
       lines.push("")
       lines.push(`This user logged ${relevantHours.toFixed(1)} ${isBuildApproval ? "build " : ""}hours across ${relevantCount} journal entr${relevantCount === 1 ? "y" : "ies"}.`)
+      const approvedHours = relevantSessions.reduce((sum, s) => sum + (s.hoursApproved ?? s.hoursClaimed), 0)
+      const deflation = relevantHours - approvedHours
+      if (deflation !== 0) {
+        lines.push(`Journal deflated by ${deflation.toFixed(1)}h (claimed ${relevantHours.toFixed(1)}h → approved ${approvedHours.toFixed(1)}h)`)
+      }
       if (!isBuildApproval) {
         if (designSessions.length > 0) lines.push(`  Design: ${designHours.toFixed(1)}h across ${designSessions.length} entr${designSessions.length === 1 ? "y" : "ies"}`)
         if (buildSessions.length > 0) lines.push(`  Build: ${buildHours.toFixed(1)}h across ${buildSessions.length} entr${buildSessions.length === 1 ? "y" : "ies"}`)
