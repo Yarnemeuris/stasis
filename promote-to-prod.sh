@@ -27,6 +27,20 @@ fi
 echo ""
 echo "⚠️  MAKE SURE YOU HAVE TESTED ALL YOUR CHANGES ON STAGING FIRST ⚠️"
 echo ""
+
+# Show pending commits that will be promoted
+PENDING=$(git log "origin/$PROD".."origin/$MAIN" --oneline 2>/dev/null)
+if [[ -z "$PENDING" ]]; then
+  echo "No new commits to promote. $PROD is already up to date with $MAIN."
+  exit 0
+fi
+
+echo "Commits to promote:"
+echo "--------------------"
+git log "origin/$PROD".."origin/$MAIN" --format="  %C(yellow)%h%C(reset) %s %C(dim)(%cr)%C(reset)"
+echo "--------------------"
+echo ""
+
 read -p "Are you sure you want to promote $MAIN to $PROD? (y/N) " confirm
 if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
   echo "Aborted."
