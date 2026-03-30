@@ -2212,7 +2212,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     </p>
                     <p className="text-red-500 text-sm font-medium mb-4">
                       IMPORTANT: Before submitting, please make sure to read the{' '}
-                      <Link href="/dashboard/help#submission-guidelines" className="underline hover:text-red-400">
+                      <Link href="/docs/submission-guidelines" className="underline hover:text-red-400">
                         submission guidelines
                       </Link>
                       .
@@ -2307,7 +2307,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     </p>
                     <p className="text-red-500 text-sm font-medium mb-4">
                       IMPORTANT: Before submitting, please make sure to read the{' '}
-                      <Link href="/dashboard/help#submission-guidelines" className="underline hover:text-red-400">
+                      <Link href="/docs/submission-guidelines" className="underline hover:text-red-400">
                         submission guidelines
                       </Link>
                       .

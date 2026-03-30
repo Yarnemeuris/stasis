@@ -89,7 +89,7 @@ export default function DashboardLayout({
     { path: '/dashboard/discover', label: 'Discover' },
     { path: '/dashboard/shop', label: 'Shop' },
     { path: '/starter-projects', label: 'Starter Projects' },
-    { path: '/dashboard/help', label: 'Guidelines & FAQ' },
+    { path: '/docs', label: 'Guidelines & FAQ' },
   ];
 
   const activeTab = tabs.find(t =>
@@ -106,8 +106,8 @@ export default function DashboardLayout({
     );
   }
 
-  if (!session && pathname.startsWith('/dashboard/help')) {
-    router.replace('/help');
+  if (!session && pathname.startsWith('/docs')) {
+    router.replace('/docs');
     return null;
   }
 

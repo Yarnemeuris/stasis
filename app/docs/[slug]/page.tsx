@@ -4,9 +4,9 @@ import { use } from 'react';
 import { notFound } from 'next/navigation';
 import GuidesContent, { GUIDE_PAGES, type GuidePage } from '../../components/GuidesContent';
 
-export default function HelpPage({ params }: { params: Promise<{ page?: string[] }> }) {
-  const { page } = use(params);
-  const pageId = (page?.[0] ?? 'overview') as GuidePage;
+export default function DocsSlugPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+  const pageId = slug as GuidePage;
 
   if (!GUIDE_PAGES.some(p => p.id === pageId)) {
     notFound();
