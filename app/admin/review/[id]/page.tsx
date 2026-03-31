@@ -177,6 +177,7 @@ export default function ReviewDetailPage() {
   const noteTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showFraudWarning, setShowFraudWarning] = useState(true);
   const [flaggingFraud, setFlaggingFraud] = useState(false);
+  const [airtableDuplicate, setAirtableDuplicate] = useState(false);
   const [modifyingPreReview, setModifyingPreReview] = useState(false);
   const [checkedJustifications, setCheckedJustifications] = useState<Set<number>>(new Set());
   const [checkedFeedback, setCheckedFeedback] = useState<Set<number>>(new Set());
@@ -200,6 +201,15 @@ export default function ReviewDetailPage() {
   }, [id, router, filterQS]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Check if project already exists in Airtable Unified DB
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/reviews/${id}/airtable-check`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((d) => { if (d?.found) setAirtableDuplicate(true); })
+      .catch(() => {});
+  }, [id]);
 
   // Auto-populate work units override based on starter project guide
   useEffect(() => {
@@ -458,6 +468,19 @@ export default function ReviewDetailPage() {
           >
             Skip to Next
           </button>
+        </div>
+      )}
+
+      {/* ── Airtable Duplicate Warning ── */}
+      {airtableDuplicate && (
+        <div className="bg-red-500/15 border-2 border-red-500 p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">⚠️</span>
+            <h2 className="text-red-400 text-lg uppercase tracking-wider font-bold">Already in Unified DB</h2>
+          </div>
+          <p className="text-red-400/80 text-sm">
+            This project&apos;s GitHub URL already exists as a record in the Airtable Unified DB. It may have already been submitted and approved through another YSWS program. Verify before approving.
+          </p>
         </div>
       )}
 
