@@ -97,6 +97,11 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             title: true,
+            tier: true,
+            bitsAwarded: true,
+            bomTax: true,
+            bomShipping: true,
+            noBomNeeded: true,
             designStatus: true,
             buildStatus: true,
             workSessions: {
@@ -106,6 +111,12 @@ export async function GET(request: NextRequest) {
               },
             },
             badges: true,
+            bomItems: {
+              select: {
+                totalCost: true,
+                status: true,
+              },
+            },
           },
         },
         roles: {

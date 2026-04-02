@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { GOAL_LABELS, type GoalPreference } from '@/lib/tiers';
+import { GOAL_LABELS, type GoalPreference, getTierById } from '@/lib/tiers';
+import { totalBomCost } from '@/lib/format';
 
 interface ProjectBadge {
   id: string;
@@ -17,13 +18,24 @@ interface WorkSession {
   hoursApproved: number | null;
 }
 
+interface BOMItemSummary {
+  totalCost: number;
+  status: string;
+}
+
 interface Project {
   id: string;
   title: string;
+  tier: number | null;
+  bitsAwarded: number | null;
+  bomTax: number | null;
+  bomShipping: number | null;
+  noBomNeeded: boolean;
   designStatus: string;
   buildStatus: string;
   workSessions: WorkSession[];
   badges: ProjectBadge[];
+  bomItems: BOMItemSummary[];
 }
 
 interface UserRole {
@@ -764,6 +776,8 @@ export default function AdminUsersPage() {
                             {user.projects.map((project) => {
                               const hoursClaimed = project.workSessions.reduce((a, s) => a + s.hoursClaimed, 0);
                               const hoursApproved = project.workSessions.reduce((a, s) => a + (s.hoursApproved ?? 0), 0);
+                              const tier = project.tier ? getTierById(project.tier) : null;
+                              const bomCost = totalBomCost(project.bomItems, project.bomTax, project.bomShipping);
                               return (
                                 <Link
                                   key={project.id}
@@ -792,6 +806,30 @@ export default function AdminUsersPage() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-3 text-xs text-cream-50">
+                                    {tier && (
+                                      <>
+                                        <span>T{tier.id} ({tier.bits} bits)</span>
+                                        <span>•</span>
+                                      </>
+                                    )}
+                                    {project.bitsAwarded != null && (
+                                      <>
+                                        <span className="text-green-500">{project.bitsAwarded} bits awarded</span>
+                                        <span>•</span>
+                                      </>
+                                    )}
+                                    {(bomCost > 0 || project.bomItems.length > 0) && !project.noBomNeeded && (
+                                      <>
+                                        <span>${bomCost.toFixed(2)} BOM</span>
+                                        <span>•</span>
+                                      </>
+                                    )}
+                                    {project.noBomNeeded && (
+                                      <>
+                                        <span className="text-cream-200">No BOM</span>
+                                        <span>•</span>
+                                      </>
+                                    )}
                                     <span>{project.workSessions.length} session{project.workSessions.length !== 1 ? 's' : ''}</span>
                                     <span>•</span>
                                     <span>{hoursClaimed.toFixed(1)}h logged</span>
