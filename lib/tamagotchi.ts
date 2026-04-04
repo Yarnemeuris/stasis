@@ -4,7 +4,7 @@ export const TAMAGOTCHI_EVENT = {
   START: '2026-03-27',
   END: '2026-04-13',
   STREAK_GOAL: 7,
-  TOTAL_DAYS: 15,
+  TOTAL_DAYS: 18,
   // Show UI for 7 days after event ends so winners can see completion state
   GRACE_DAYS: 7,
   // Sessions created within this many minutes after midnight count for the previous day
