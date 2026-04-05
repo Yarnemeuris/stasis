@@ -482,6 +482,7 @@ model CurrencyTransaction {
   balanceAfter  Int                     // Balance after this entry
   createdBy     String?                 // Admin user ID; null if system-generated
   createdAt     DateTime                @default(now())
+  fulfilledAt   DateTime?               // When a shop purchase was fulfilled by admin
 
   @@index([userId])
   @@index([userId, shopItemId])
