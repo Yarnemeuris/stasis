@@ -200,7 +200,6 @@ export async function POST(
               result: "APPROVED",
               isAdminReview: false,
               feedback: sanitizedFeedback,
-              reason: typeof body.reason === "string" ? body.reason.trim() || null : null,
               workUnitsOverride: workUnitsOverride ?? null,
               tierOverride: tierOverride ?? null,
               grantOverride: effectiveGrant ?? null,
@@ -445,22 +444,20 @@ export async function POST(
       if (hackatimeHours > 0) hoursParts.push(`${hackatimeHours} hours of hackatime`)
       if (timelapseHours > 0) hoursParts.push(`${timelapseHours} hours of lapse`)
 
-      // Fetch first-pass review (non-admin) justification if it exists
+      // Fetch first-pass reviewer name if one exists
       const latestSubmission = await prisma.projectSubmission.findFirst({
         where: { projectId: project!.id, stage: stage! },
         orderBy: { createdAt: "desc" },
         select: { id: true },
       })
-      let firstPassReason: string | null = null
       let firstPassReviewerName: string | null = null
       if (latestSubmission) {
         const firstPass = await prisma.submissionReview.findFirst({
           where: { submissionId: latestSubmission.id, isAdminReview: false, result: "APPROVED" },
           orderBy: { createdAt: "desc" },
-          select: { reason: true, reviewerId: true },
+          select: { reviewerId: true },
         })
         if (firstPass) {
-          firstPassReason = firstPass.reason
           const fpUser = await prisma.user.findUnique({
             where: { id: firstPass.reviewerId },
             select: { name: true, email: true },
@@ -483,15 +480,13 @@ export async function POST(
       lines.push(`Part of the time for this project was tracked via journaling. After making sure the project worked, and was shipped, the second pass reviewer decided the deflation.`)
       lines.push("")
 
-      // First-pass (non-admin) reviewer's internal justification
-      if (firstPassReason) {
-        lines.push(`First-pass reviewer (${firstPassReviewerName}): "${firstPassReason}"`)
-        lines.push("")
+      if (firstPassReviewerName) {
+        lines.push(`First-pass reviewer: ${firstPassReviewerName}`)
       }
 
-      // Second-pass (admin) reviewer's internal justification
+      // Second-pass (admin) reviewer's justification
       if (reasonText) {
-        lines.push(`Second-pass reviewer (${reviewerName}): "${reasonText}"`)
+        lines.push(`Reviewer justification (${reviewerName}): "${reasonText}"`)
         lines.push("")
       }
 
