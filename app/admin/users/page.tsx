@@ -61,6 +61,8 @@ interface AdminUser {
   totalProjects: number;
   totalHoursClaimed: number;
   totalHoursApproved: number;
+  designBits: number;
+  totalBits: number;
   hasEventInvite: boolean;
   flightStipend: number;
   shopPurchaseCount: number;
@@ -109,6 +111,7 @@ export default function AdminUsersPage() {
   const [filterRole, setFilterRole] = useState<'ADMIN' | 'REVIEWER' | 'SIDEKICK' | 'AUDITOR' | 'AUDITOR' | null>(null);
   const [filterAddress, setFilterAddress] = useState<boolean | null>(null);
   const [filterPronouns, setFilterPronouns] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'recent' | 'bits'>('recent');
   const [page, setPage] = useState(1);
   const [pendingRoles, setPendingRoles] = useState<Record<string, string[]>>({});
   const [roleConfirm, setRoleConfirm] = useState<{ user: AdminUser; adding: string[]; removing: string[] } | null>(null);
@@ -145,6 +148,7 @@ export default function AdminUsersPage() {
       if (filterRole) params.set('role', filterRole);
       if (filterAddress !== null) params.set('address', String(filterAddress));
       if (filterPronouns) params.set('pronouns', filterPronouns);
+      if (sortBy === 'bits') params.set('sort', 'bits');
 
       const res = await fetch(`/api/admin/users?${params}`);
       if (res.ok) {
@@ -155,7 +159,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterFraud, filterRole, filterAddress, filterPronouns]);
+  }, [page, search, filterFraud, filterRole, filterAddress, filterPronouns, sortBy]);
 
   useEffect(() => {
     fetchUsers();
@@ -440,6 +444,27 @@ export default function AdminUsersPage() {
               ))}
               <span className="text-cream-400">|</span>
               <button
+                onClick={() => { setSortBy('recent'); setPage(1); }}
+                className={`px-3 py-1.5 text-xs uppercase cursor-pointer ${
+                  sortBy === 'recent'
+                    ? 'bg-orange-500 text-cream-50 led-flicker'
+                    : 'bg-brown-800 border border-cream-500/20 text-cream-50 hover:border-cream-500'
+                }`}
+              >
+                Recent
+              </button>
+              <button
+                onClick={() => { setSortBy('bits'); setPage(1); }}
+                className={`px-3 py-1.5 text-xs uppercase cursor-pointer ${
+                  sortBy === 'bits'
+                    ? 'bg-orange-500 text-cream-50 led-flicker'
+                    : 'bg-brown-800 border border-cream-500/20 text-cream-50 hover:border-cream-500'
+                }`}
+              >
+                Most Bits
+              </button>
+              <span className="text-cream-400">|</span>
+              <button
                 onClick={() => {
                   if (confirm('Backfill address data from Hack Club Auth for all users missing addresses?')) {
                     backfillAddresses();
@@ -480,9 +505,9 @@ export default function AdminUsersPage() {
                   Cleared {avatarResult.cleared} gravatar URLs, fetching {avatarResult.toFetch} avatars — check server logs
                 </span>
               )}
-              {(filterFraud !== null || filterRole !== null || filterAddress !== null || filterPronouns !== null) && (
+              {(filterFraud !== null || filterRole !== null || filterAddress !== null || filterPronouns !== null || sortBy !== 'recent') && (
                 <button
-                  onClick={() => { setFilterFraud(null); setFilterRole(null); setFilterAddress(null); setFilterPronouns(null); setPage(1); }}
+                  onClick={() => { setFilterFraud(null); setFilterRole(null); setFilterAddress(null); setFilterPronouns(null); setSortBy('recent'); setPage(1); }}
                   className="px-3 py-1.5 text-xs uppercase text-cream-50 hover:text-orange-500 transition-colors cursor-pointer"
                 >
                   Clear Filters
@@ -592,6 +617,11 @@ export default function AdminUsersPage() {
                           <p className="text-orange-500">{user.totalProjects} {user.totalProjects === 1 ? 'project' : 'projects'}</p>
                           <p className="text-cream-50 text-xs">
                             {user.totalHoursApproved.toFixed(1)}h approved
+                          </p>
+                          <p className="text-cream-50 text-xs">
+                            <span className="text-yellow-500">{user.designBits}b design</span>
+                            {' / '}
+                            <span className="text-green-500">{user.totalBits}b total</span>
                           </p>
                         </div>
                         <svg
