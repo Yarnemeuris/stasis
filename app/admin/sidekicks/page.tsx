@@ -77,7 +77,7 @@ function activityBadge(days: number | null): { label: string; className: string 
   return { label: `${days}d ago`, className: 'bg-red-600/20 text-red-500' };
 }
 
-type ActivityFilter = 'all' | 'active' | 'inactive_7' | 'inactive_14' | 'never';
+type ActivityFilter = 'all' | 'lt_3d' | '3_7d' | '7_14d' | '14d_plus' | 'never';
 type ProjectFilter = 'all' | 'has_projects' | 'no_projects';
 type SortOption = 'last_active' | 'name' | 'journals' | 'assigned';
 
@@ -258,9 +258,10 @@ export default function AdminSidekicksPage() {
       filtered = filtered.filter((a) => {
         const days = daysSince(a.lastActiveAt);
         switch (activityFilter) {
-          case 'active': return days !== null && days <= 7;
-          case 'inactive_7': return days === null || days > 7;
-          case 'inactive_14': return days === null || days > 14;
+          case 'lt_3d': return days !== null && days < 3;
+          case '3_7d': return days !== null && days >= 3 && days <= 7;
+          case '7_14d': return days !== null && days > 7 && days <= 14;
+          case '14d_plus': return days !== null && days > 14;
           case 'never': return days === null;
         }
       });
@@ -296,13 +297,21 @@ export default function AdminSidekicksPage() {
   }
 
   const allAssignees = sidekicks.flatMap((s) => s.assignees);
-  const totalInactive7 = allAssignees.filter((a) => {
+  const totalLt3d = allAssignees.filter((a) => {
     const days = daysSince(a.lastActiveAt);
-    return days === null || days > 7;
+    return days !== null && days < 3;
   }).length;
-  const totalInactive14 = allAssignees.filter((a) => {
+  const total3to7d = allAssignees.filter((a) => {
     const days = daysSince(a.lastActiveAt);
-    return days === null || days > 14;
+    return days !== null && days >= 3 && days <= 7;
+  }).length;
+  const total7to14d = allAssignees.filter((a) => {
+    const days = daysSince(a.lastActiveAt);
+    return days !== null && days > 7 && days <= 14;
+  }).length;
+  const total14dPlus = allAssignees.filter((a) => {
+    const days = daysSince(a.lastActiveAt);
+    return days !== null && days > 14;
   }).length;
   const totalNeverActive = allAssignees.filter((a) => a.lastActiveAt === null).length;
 
@@ -331,11 +340,17 @@ export default function AdminSidekicksPage() {
         <p className="text-cream-50 text-sm uppercase">
           {sidekicks.length} sidekick{sidekicks.length !== 1 ? 's' : ''} &middot;{' '}
           {allAssignees.length} total assignees
-          {totalInactive7 > 0 && (
-            <span className="text-yellow-500"> &middot; {totalInactive7} inactive 7d+</span>
+          {totalLt3d > 0 && (
+            <span className="text-green-500"> &middot; {totalLt3d} &lt;3d</span>
           )}
-          {totalInactive14 > 0 && (
-            <span className="text-red-500"> &middot; {totalInactive14} inactive 14d+</span>
+          {total3to7d > 0 && (
+            <span className="text-yellow-500"> &middot; {total3to7d} 3-7d</span>
+          )}
+          {total7to14d > 0 && (
+            <span className="text-orange-500"> &middot; {total7to14d} 7-14d</span>
+          )}
+          {total14dPlus > 0 && (
+            <span className="text-red-500"> &middot; {total14dPlus} 14d+</span>
           )}
           {totalNeverActive > 0 && (
             <span className="text-cream-200"> &middot; {totalNeverActive} never active</span>
@@ -347,9 +362,10 @@ export default function AdminSidekicksPage() {
           <span className="text-cream-200 text-xs uppercase">Activity:</span>
           {([
             ['all', 'All'],
-            ['active', 'Active (7d)'],
-            ['inactive_7', 'Inactive 7d+'],
-            ['inactive_14', 'Inactive 14d+'],
+            ['lt_3d', '<3d'],
+            ['3_7d', '3-7d'],
+            ['7_14d', '7-14d'],
+            ['14d_plus', '14d+'],
             ['never', 'Never Active'],
           ] as [ActivityFilter, string][]).map(([value, label]) => (
             <button
@@ -357,9 +373,10 @@ export default function AdminSidekicksPage() {
               onClick={() => setActivityFilter(activityFilter === value ? 'all' : value)}
               className={`px-3 py-1.5 text-xs uppercase cursor-pointer transition-colors ${
                 activityFilter === value
-                  ? value === 'active' ? 'bg-green-600 text-white led-flicker'
-                    : value === 'inactive_7' ? 'bg-yellow-600 text-white led-flicker'
-                    : value === 'inactive_14' ? 'bg-red-600 text-white led-flicker'
+                  ? value === 'lt_3d' ? 'bg-green-600 text-white led-flicker'
+                    : value === '3_7d' ? 'bg-yellow-600 text-white led-flicker'
+                    : value === '7_14d' ? 'bg-orange-600 text-white led-flicker'
+                    : value === '14d_plus' ? 'bg-red-600 text-white led-flicker'
                     : value === 'never' ? 'bg-cream-400 text-cream-50 led-flicker'
                     : 'bg-orange-500 text-cream-50 led-flicker'
                   : 'bg-brown-800 border border-cream-500/20 text-cream-50 hover:border-cream-500'
@@ -522,11 +539,14 @@ export default function AdminSidekicksPage() {
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filterAndSortAssignees(sidekick.assignees).length === 0 ? (
-                      <p className="text-cream-200 text-sm text-center py-4 col-span-full">
-                        No assignees match current filters
-                      </p>
-                    ) : filterAndSortAssignees(sidekick.assignees).map((assignee) => {
+                    {(() => {
+                      const filtered = filterAndSortAssignees(sidekick.assignees);
+                      if (filtered.length === 0) return (
+                        <p className="text-cream-200 text-sm text-center py-4 col-span-full">
+                          No assignees match current filters
+                        </p>
+                      );
+                      return filtered.map((assignee) => {
                       const days = daysSince(assignee.lastActiveAt);
                       const activity = activityBadge(days);
                       return (
@@ -655,7 +675,8 @@ export default function AdminSidekicksPage() {
                         </div>
                       </div>
                       );
-                    })}
+                    });
+                    })()}
                   </div>
                 )}
               </div>
