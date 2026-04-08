@@ -204,6 +204,7 @@ export function TamagotchiOverlay({ onClose, status }: Props) {
   const [showFirstLabel, setShowFirstLabel] = useState(skipIntro);
   const [showLastLabel, setShowLastLabel] = useState(skipIntro);
   const [hoveredSquare, setHoveredSquare] = useState<string | null>(null);
+  const [hoveredGraceGap, setHoveredGraceGap] = useState<number | null>(null);
   const squaresRef = useRef<HTMLDivElement>(null);
   const [squaresFlip, setSquaresFlip] = useState<number | null>(null);
   const [linePulseKey, setLinePulseKey] = useState(0);
@@ -218,6 +219,23 @@ export function TamagotchiOverlay({ onClose, status }: Props) {
   // Show the most recent past days (closest to today)
   const pastToShow = status.pastDays.slice(-pastVisible);
   const futureToShow = status.futureDays.slice(0, futureVisible);
+
+  // Map grace days to the gaps between consecutive window squares
+  const graceDaysByGap = useMemo(() => {
+    const gaps = new Map<number, string[]>();
+    if (!status.graceDays?.length || !status.windowDays.length) return gaps;
+    for (const gd of status.graceDays) {
+      for (let i = 1; i < status.windowDays.length; i++) {
+        if (gd.date > status.windowDays[i - 1].date && gd.date < status.windowDays[i].date) {
+          const existing = gaps.get(i) || [];
+          existing.push(gd.date);
+          gaps.set(i, existing);
+          break;
+        }
+      }
+    }
+    return gaps;
+  }, [status.graceDays, status.windowDays]);
 
   // Grid animation
   useEffect(() => {
@@ -380,7 +398,9 @@ export function TamagotchiOverlay({ onClose, status }: Props) {
     if (detailMode) {
       const prev = status.windowDays[i - 1];
       const curr = status.windowDays[i];
+      const hasGraceBridge = graceDaysByGap.has(i);
       if (prev?.completed && curr?.completed) return 'bg-orange-500/30';
+      if (hasGraceBridge && (prev?.completed || curr?.completed)) return 'bg-orange-500/30';
       return 'bg-[#4D4238]';
     }
     if (squareColors[i - 1] && squareColors[i]) return 'bg-orange-500/20 led-flicker-slow';
@@ -544,13 +564,32 @@ export function TamagotchiOverlay({ onClose, status }: Props) {
               <div key={i} className="flex items-center">
                 {/* Connecting line (skip first, but add one if there are past squares) */}
                 {(i > 0 || (detailMode && pastVisible > 0)) && i === 0 ? null : i > 0 && (
-                  <div
-                    key={`line-${i}-${linePulseKey}`}
-                    className={`w-4 sm:w-12 h-1 ${getLineClass(i)}`}
-                    style={linePulsing && detailMode ? {
-                      animation: `line-pulse-orange 0.5s ease-in-out ${(i - 1) * 80}ms both`,
-                    } : undefined}
-                  />
+                  <div className="relative flex items-center">
+                    <div
+                      key={`line-${i}-${linePulseKey}`}
+                      className={`w-4 sm:w-12 h-1 ${getLineClass(i)}`}
+                      style={linePulsing && detailMode ? {
+                        animation: `line-pulse-orange 0.5s ease-in-out ${(i - 1) * 80}ms both`,
+                      } : undefined}
+                    />
+                    {detailMode && graceDaysByGap.has(i) && (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center"
+                        onMouseEnter={() => setHoveredGraceGap(i)}
+                        onMouseLeave={() => setHoveredGraceGap(null)}
+                      >
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 16 16" fill="none">
+                          <line x1="0" y1="0" x2="16" y2="16" stroke="var(--color-orange-500)" strokeOpacity="0.3" strokeWidth="3" />
+                          <line x1="16" y1="0" x2="0" y2="16" stroke="var(--color-orange-500)" strokeOpacity="0.3" strokeWidth="3" />
+                        </svg>
+                        {hoveredGraceGap === i && (
+                          <div className="absolute top-7 sm:top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] text-cream-300 uppercase bg-brown-900 border border-[#4D4238] px-1.5 py-0.5 pointer-events-none led-flicker-slow z-10">
+                            Streak saved on {graceDaysByGap.get(i)!.map(d => fmtDate(d)).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
                 <div className="relative"
                   onMouseEnter={() => {

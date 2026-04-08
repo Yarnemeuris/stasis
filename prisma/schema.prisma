@@ -433,6 +433,8 @@ enum AuditAction {
   ADMIN_DELETE_PROJECT
   ADMIN_UNDELETE_PROJECT
   ADMIN_SET_EFFECTIVE_DATE
+  ADMIN_GRANT_STREAK_GRACE_DAY
+  ADMIN_REVOKE_STREAK_GRACE_DAY
 
   REVIEWER_APPROVE
   REVIEWER_RETURN
@@ -650,6 +652,18 @@ model StreakReward {
   @@map("streak_reward")
 }
 
+// Admin-granted grace days for tamagotchi streaks (bridge missed days without counting toward goal)
+model StreakGraceDay {
+  id        String   @id @default(cuid())
+  userId    String
+  date      String   // YYYY-MM-DD
+  grantedBy String
+  grantedAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("streak_grace_day")
+}
 
 // Blueprint cross-platform import tracking
 model BlueprintImport {

@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       todayProgress: { hasJournal: false, complete: false },
       reward: null,
       recentProjectId: null,
+      graceDays: [],
     } satisfies TamagotchiStatus)
   }
 
@@ -73,6 +74,13 @@ export async function GET(request: NextRequest) {
     },
   })
 
+  // Fetch grace days for this user
+  const graceDayRecords = await prisma.streakGraceDay.findMany({
+    where: { userId },
+    select: { date: true },
+  })
+  const graceDayDates = new Set(graceDayRecords.map(g => g.date))
+
   // Group by effective date — prefer stored effectiveDate (set at creation time in user's TZ),
   // fall back to computing from createdAt + current TZ for older sessions without it
   const dayMap = new Map<string, { hasJournal: boolean; sessions: number }>()
@@ -88,7 +96,7 @@ export async function GET(request: NextRequest) {
     dayMap.set(dateStr, existing)
   }
 
-  // Build the full 14-day array for streak computation
+  // Build the full 18-day array for streak computation
   const eventDates = getEventDayDates()
   const allDays: TamagotchiDay[] = eventDates.map((date) => {
     const data = dayMap.get(date)
@@ -103,6 +111,7 @@ export async function GET(request: NextRequest) {
       sessions: data?.sessions ?? 0,
       isToday,
       isFuture,
+      isGraceDay: graceDayDates.has(date) && !hasJournal,
     }
   })
 
@@ -112,12 +121,12 @@ export async function GET(request: NextRequest) {
   // Find where the current streak attempt starts
   const streakStart = findStreakStart(allDays, today)
 
-  // Split into window / past / future
-  const windowDateStrs = getWindowDates(streakStart)
+  // Split into window / past / future (grace days excluded from all three — shown as X on lines)
+  const windowDateStrs = getWindowDates(streakStart, graceDayDates)
   const windowDays = allDays.filter(d => windowDateStrs.includes(d.date))
-  const pastDays = allDays.filter(d => d.date < streakStart && d.date >= TAMAGOTCHI_EVENT.START)
+  const pastDays = allDays.filter(d => d.date < streakStart && d.date >= TAMAGOTCHI_EVENT.START && !d.isGraceDay)
   const lastWindowDate = windowDateStrs[windowDateStrs.length - 1] ?? today
-  const futureDays = allDays.filter(d => d.date > lastWindowDate && d.date <= TAMAGOTCHI_EVENT.END)
+  const futureDays = allDays.filter(d => d.date > lastWindowDate && d.date <= TAMAGOTCHI_EVENT.END && !d.isGraceDay)
 
   // Today's progress
   const todayData = dayMap.get(today)
@@ -171,5 +180,8 @@ export async function GET(request: NextRequest) {
     todayProgress,
     reward,
     recentProjectId: recentProject?.id ?? null,
+    graceDays: graceDayRecords
+      .filter(g => g.date >= TAMAGOTCHI_EVENT.START && g.date <= TAMAGOTCHI_EVENT.END)
+      .map(g => ({ date: g.date })),
   } satisfies TamagotchiStatus)
 }

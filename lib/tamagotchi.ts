@@ -18,6 +18,7 @@ export interface TamagotchiDay {
   sessions: number;
   isToday: boolean;
   isFuture: boolean;
+  isGraceDay: boolean; // admin-granted grace day (bridges streak without counting)
 }
 
 export interface TamagotchiStatus {
@@ -48,6 +49,7 @@ export interface TamagotchiStatus {
     shipped: boolean;
   } | null;
   recentProjectId: string | null;
+  graceDays: { date: string }[];
 }
 
 // ---- Timezone helpers ----
@@ -111,43 +113,55 @@ export function getEventDayDates(): string[] {
   return dates;
 }
 
-/** Get the window dates: streakStart through min(streakStart+6, eventEnd) */
-export function getWindowDates(streakStart: string): string[] {
+/** Get the window dates: 7 non-grace dates starting from streakStart, skipping grace days */
+export function getWindowDates(streakStart: string, graceDayDates?: Set<string>): string[] {
   const dates: string[] = [];
   const start = new Date(streakStart + 'T12:00:00Z');
-  for (let i = 0; i < TAMAGOTCHI_EVENT.STREAK_GOAL; i++) {
+  const graceSet = graceDayDates ?? new Set<string>();
+  const maxCalendarDays = TAMAGOTCHI_EVENT.STREAK_GOAL + graceSet.size + 1;
+
+  for (let i = 0; i < maxCalendarDays; i++) {
     const d = new Date(start);
     d.setUTCDate(d.getUTCDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
     if (dateStr > TAMAGOTCHI_EVENT.END) break;
     if (dateStr < TAMAGOTCHI_EVENT.START) continue;
+    if (graceSet.has(dateStr)) continue;
     dates.push(dateStr);
+    if (dates.length >= TAMAGOTCHI_EVENT.STREAK_GOAL) break;
   }
   return dates;
 }
 
 /**
  * Find the start date of the current streak attempt.
- * Walks backwards from today through consecutive completed days.
+ * Walks backwards from today through consecutive completed or grace days.
  * If no streak, returns today (fresh attempt).
  */
 export function findStreakStart(days: TamagotchiDay[], today: string): string {
   const todayIdx = days.findIndex(d => d.date === today);
   if (todayIdx < 0) return today;
 
-  // Start from today if it's complete, or yesterday if not
+  // Start from today if it's complete/grace, or yesterday if not
   let idx = todayIdx;
-  if (!days[idx].completed && idx > 0) {
+  if (!days[idx].completed && !days[idx].isGraceDay && idx > 0) {
     idx = todayIdx - 1;
   }
 
-  // If this day isn't complete either, no active streak — fresh start from today
-  if (!days[idx].completed) return today;
+  // If this day isn't complete or grace, no active streak — fresh start from today
+  if (!days[idx].completed && !days[idx].isGraceDay) return today;
 
-  // Walk backwards through consecutive completed days
-  while (idx > 0 && days[idx - 1].completed) {
+  // Walk backwards through consecutive completed or grace days
+  while (idx > 0 && (days[idx - 1].completed || days[idx - 1].isGraceDay)) {
     idx--;
   }
+
+  // Skip past any leading grace days to land on first real completed day
+  while (idx < todayIdx && days[idx].isGraceDay) {
+    idx++;
+  }
+
+  if (!days[idx].completed && !days[idx].isGraceDay) return today;
 
   return days[idx].date;
 }
@@ -180,6 +194,7 @@ export function canStillComplete(today: string): boolean {
 /**
  * Compute streak data from the full event days array.
  * A day is "completed" if hasJournal is true.
+ * Grace days bridge the streak without counting toward the goal.
  */
 export function computeStreaks(
   days: TamagotchiDay[],
@@ -197,6 +212,8 @@ export function computeStreaks(
         challengeComplete = true;
       }
       bestStreak = Math.max(bestStreak, tempStreak);
+    } else if (day.isGraceDay) {
+      // Grace day: don't break streak, don't count toward goal
     } else {
       tempStreak = 0;
     }
