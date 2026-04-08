@@ -138,7 +138,6 @@ export async function POST(
 
   const justification = justLines.join("\n")
   const grantAmount = designReviewAction?.grantAmount ?? null
-  const isBuildApproved = project.buildStatus === "approved"
 
   try {
     await syncProjectToAirtable(
