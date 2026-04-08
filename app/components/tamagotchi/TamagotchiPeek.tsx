@@ -5,9 +5,10 @@ import { useState, useEffect } from 'react';
 interface Props {
   onClick: () => void;
   todayComplete: boolean;
+  unreachable: boolean;
 }
 
-export function TamagotchiPeek({ onClick, todayComplete }: Readonly<Props>) {
+export function TamagotchiPeek({ onClick, todayComplete, unreachable }: Readonly<Props>) {
   const [hopKey, setHopKey] = useState(0);
 
   // Preload overlay images so they're cached before the user clicks
@@ -17,12 +18,13 @@ export function TamagotchiPeek({ onClick, todayComplete }: Readonly<Props>) {
   }, []);
 
   // Periodic hop every ~5s if user hasn't completed today's streak
+  // Skip hopping entirely if the streak is no longer reachable
   useEffect(() => {
-    if (todayComplete) return;
+    if (todayComplete || unreachable) return;
     const interval = setInterval(() => setHopKey(k => k + 1), 5000);
     const initial = setTimeout(() => setHopKey(k => k + 1), 1500);
     return () => { clearInterval(interval); clearTimeout(initial); };
-  }, [todayComplete]);
+  }, [todayComplete, unreachable]);
 
   return (
     <button
@@ -34,13 +36,14 @@ export function TamagotchiPeek({ onClick, todayComplete }: Readonly<Props>) {
         key={hopKey}
         src="/tamagotchi-orange-border.png"
         alt="Tamagotchi"
-        className={`object-contain ${!todayComplete && hopKey > 0 ? 'animate-[tamagotchi-hop_0.6s_ease-out]' : ''}`}
+        className={`object-contain ${!todayComplete && !unreachable && hopKey > 0 ? 'animate-[tamagotchi-hop_0.6s_ease-out]' : ''}`}
         style={{
           width: 'clamp(6rem, 8vw, 12rem)',
           height: 'clamp(6rem, 8vw, 12rem)',
           filter: 'drop-shadow(0 -4px 24px rgba(232, 106, 58, 0.5))',
           transform: 'translateY(var(--peek-y, 0px))',
           transition: 'transform 0.3s ease-out',
+          opacity: unreachable ? 0.5 : 1,
         }}
       />
     </button>
