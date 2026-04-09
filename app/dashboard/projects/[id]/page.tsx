@@ -1209,7 +1209,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 {/* Tier Card */}
                 {(() => {
                   const currentTier = project.tier ? TIERS.find(t => t.id === project.tier) : null;
-                  const tierLocked = project.designStatus !== 'draft';
+                  const tierLocked = project.designStatus === 'approved';
                   const tierEditable = canEdit && !tierLocked;
                   return (
                     <div
