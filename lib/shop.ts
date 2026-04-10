@@ -14,6 +14,7 @@ export interface ShopItem {
   id: ShopItemId
   name: string
   description: string
+  disclaimer?: string
   bitsCost: number
   category: ShopItemCategory
   maxPerUser: number // 0 = unlimited
@@ -36,6 +37,7 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
     id: SHOP_ITEM_IDS.STASIS_EVENT_INVITE,
     name: 'Stasis Event Invite',
     description: 'Your ticket to Stasis!',
+    disclaimer: 'Does not include travel.',
     bitsCost: 350,
     category: 'invite',
     maxPerUser: 1,
@@ -44,6 +46,7 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
     id: SHOP_ITEM_IDS.OPEN_SAUCE_TICKET,
     name: 'Open Sauce Ticket',
     description: 'Your ticket to Open Sauce with Hack Club!',
+    disclaimer: 'Does not include travel or accommodation.',
     bitsCost: 250,
     category: 'invite',
     maxPerUser: 1,

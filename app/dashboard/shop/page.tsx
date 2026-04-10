@@ -607,7 +607,10 @@ export default function ShopPage() {
                     }`}>
                       <div className="flex-1">
                         <h3 className="text-brown-800 text-xl font-medium mb-1">{inviteItem.name}</h3>
-                        <p className="text-brown-800 text-sm mb-3">{inviteItem.description}</p>
+                        <p className="text-brown-800 text-sm mb-3">
+                          {inviteItem.description}
+                          {inviteItem.disclaimer && <span className="opacity-50"> {inviteItem.disclaimer}</span>}
+                        </p>
                         <p className="text-orange-400 font-bold text-lg">
                           {inviteItem.bitsCost.toLocaleString()}&nbsp;{inviteItem.id === SHOP_ITEM_IDS.STASIS_EVENT_INVITE ? 'Pending Bits' : 'Bits'}
                         </p>
