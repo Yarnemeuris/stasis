@@ -34,6 +34,24 @@ const mdxComponents: MDXComponents = {
   a: ({ children, href }) => (
     <a href={href} className="text-orange-500 underline">{children as React.ReactNode}</a>
   ),
+  table: ({ children }) => (
+    <table className="w-full text-brown-800 text-sm">{children as React.ReactNode}</table>
+  ),
+  thead: ({ children }) => (
+    <thead className="border-b border-cream-400 text-left">{children as React.ReactNode}</thead>
+  ),
+  th: ({ children }) => (
+    <th className="py-1.5 pr-4 font-bold text-orange-400 uppercase text-xs tracking-wide">{children as React.ReactNode}</th>
+  ),
+  tbody: ({ children }) => (
+    <tbody className="divide-y divide-cream-300">{children as React.ReactNode}</tbody>
+  ),
+  tr: ({ children }) => (
+    <tr>{children as React.ReactNode}</tr>
+  ),
+  td: ({ children }) => (
+    <td className="py-1.5 pr-4">{children as React.ReactNode}</td>
+  ),
 };
 
 export default function ParentsPage() {
