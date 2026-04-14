@@ -116,6 +116,10 @@ const HOURS_BY_GUIDE: Record<string, number> = {
   'blinky': 5,
 };
 
+const DEDUCTION_BY_GUIDE: Record<string, number> = {
+  'blinky': 10,
+};
+
 const JUSTIFICATION_SHORTCUTS = [
   { label: 'High quality devboard', text: 'This project follows our devboard guide which typically takes 15-20 hours to complete. This project however, is signifigantly higher quality so I am going to deflate only a bit and keep it above that range.' },
   { label: 'Normal devboard', text: 'This project follows our devboard guide which typically takes 15-20 hours to complete. This project is a normal devboard within this range so I am deflating it only a bit.' },
@@ -181,6 +185,7 @@ export default function ReviewDetailPage() {
   const [workUnitsOverride, setWorkUnitsOverride] = useState('');
   const [tierOverride, setTierOverride] = useState('');
   const [grantOverride, setGrantOverride] = useState('');
+  const [additionalBitsDeduction, setAdditionalBitsDeduction] = useState('');
   const [categoryOverride, setCategoryOverride] = useState('');
   const [internalNote, setInternalNote] = useState('');
   const noteTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -230,6 +235,16 @@ export default function ReviewDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.submission.project.starterProjectId]);
 
+  // Auto-populate additional bits deduction for kit-based guides (e.g. Blinky)
+  useEffect(() => {
+    if (!data) return;
+    const guideId = data.submission.project.starterProjectId;
+    if (guideId && DEDUCTION_BY_GUIDE[guideId] && !additionalBitsDeduction) {
+      setAdditionalBitsDeduction(String(DEDUCTION_BY_GUIDE[guideId]));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.submission.project.starterProjectId]);
+
   // Ctrl+Enter keyboard shortcut to approve
   useEffect(() => {
     function handleKeydown(e: KeyboardEvent) {
@@ -243,7 +258,7 @@ export default function ReviewDetailPage() {
     document.addEventListener('keydown', handleKeydown);
     return () => document.removeEventListener('keydown', handleKeydown);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submitting, data, feedback, reason, workUnitsOverride, tierOverride, grantOverride, categoryOverride]);
+  }, [submitting, data, feedback, reason, workUnitsOverride, tierOverride, grantOverride, additionalBitsDeduction, categoryOverride]);
 
   // Fetch GitHub checks when submission loads
   useEffect(() => {
@@ -351,6 +366,7 @@ export default function ReviewDetailPage() {
       else if (tierOverride) body.tierOverride = parseInt(tierOverride);
       if (overrides?.grantOverride != null) body.grantOverride = overrides.grantOverride;
       else if (grantOverride) body.grantOverride = parseInt(grantOverride);
+      if (additionalBitsDeduction) body.additionalBitsDeduction = parseInt(additionalBitsDeduction);
       if (categoryOverride && data?.isAdmin) body.categoryOverride = categoryOverride;
       if (overrides?.firstPassReviewerId) body.firstPassReviewerId = overrides.firstPassReviewerId;
 
@@ -1088,6 +1104,25 @@ export default function ReviewDetailPage() {
                 />
                 {grantOverride && (
                   <p className="text-cream-200 text-xs mt-1">{grantOverride} bits = ${grantOverride} value</p>
+                )}
+              </div>
+              <div>
+                <label className="text-cream-200 text-xs uppercase block mb-1">Additional Bits Deduction</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={additionalBitsDeduction}
+                  onChange={(e) => setAdditionalBitsDeduction(e.target.value)}
+                  placeholder={
+                    project.starterProjectId && DEDUCTION_BY_GUIDE[project.starterProjectId]
+                      ? `Default: ${DEDUCTION_BY_GUIDE[project.starterProjectId]} (${project.starterProjectId} kit)`
+                      : 'Default: 0'
+                  }
+                  className="w-full px-3 py-1.5 text-sm border border-cream-500/20 bg-brown-900 text-cream-50 focus:outline-none focus:border-orange-500"
+                />
+                {additionalBitsDeduction && parseInt(additionalBitsDeduction) > 0 && (
+                  <p className="text-cream-200 text-xs mt-1">−{additionalBitsDeduction} bits will be subtracted from the tier award on build approval</p>
                 )}
               </div>
               {isAdmin && (

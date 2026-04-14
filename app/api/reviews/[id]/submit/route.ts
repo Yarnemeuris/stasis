@@ -30,6 +30,7 @@ export async function POST(
     workUnitsOverride,
     tierOverride,
     grantOverride,
+    additionalBitsDeduction,
     categoryOverride,
     submissionId: clientSubmissionId,
     firstPassReviewerId,
@@ -72,6 +73,20 @@ export async function POST(
     if (!TIERS.some((t) => t.id === tierOverride)) {
       return NextResponse.json(
         { error: `tierOverride must be one of ${TIERS.map((t) => t.id).join(", ")}` },
+        { status: 400 }
+      )
+    }
+  }
+
+  // Validate additionalBitsDeduction (non-negative integer if provided)
+  if (additionalBitsDeduction !== undefined && additionalBitsDeduction !== null) {
+    if (
+      typeof additionalBitsDeduction !== "number" ||
+      !Number.isInteger(additionalBitsDeduction) ||
+      additionalBitsDeduction < 0
+    ) {
+      return NextResponse.json(
+        { error: "additionalBitsDeduction must be a non-negative integer" },
         { status: 400 }
       )
     }
@@ -271,20 +286,23 @@ export async function POST(
           })
         }
 
-        // Award pending bits (DESIGN_APPROVED) based on tier minus BOM cost
+        // Award pending bits (DESIGN_APPROVED) based on tier minus BOM cost minus kit deduction
         const effectiveTierDesign = tierOverride ?? project!.tier
         const tierBitsDesign = effectiveTierDesign ? getTierBits(effectiveTierDesign) : 0
         const bomCostDesign = Math.round(effectiveGrant ?? 0)
-        const pendingBits = tierBitsDesign > 0 ? Math.max(0, tierBitsDesign - bomCostDesign) : 0
+        const kitDeductionDesign = additionalBitsDeduction ?? 0
+        const pendingBits = tierBitsDesign > 0 ? Math.max(0, tierBitsDesign - bomCostDesign - kitDeductionDesign) : 0
 
         if (pendingBits > 0) {
           const tierNameDesign = getTierById(effectiveTierDesign!)!.name
+          const notePartsDesign = `${tierBitsDesign} − ${bomCostDesign} BOM`
+          const noteKitPartDesign = kitDeductionDesign > 0 ? ` − ${kitDeductionDesign} kit` : ''
           await appendLedgerEntry(tx, {
             userId: project!.userId,
             projectId: project!.id,
             amount: pendingBits,
             type: CurrencyTransactionType.DESIGN_APPROVED,
-            note: `Design approved — ${tierNameDesign} (${tierBitsDesign} − ${bomCostDesign} BOM = ${pendingBits} pending bits)`,
+            note: `Design approved — ${tierNameDesign} (${notePartsDesign}${noteKitPartDesign} = ${pendingBits} pending bits)`,
             createdBy: reviewerId,
           })
         }
@@ -336,16 +354,19 @@ export async function POST(
           select: { grantAmount: true },
         })
         const bomDeduction = Math.round(designAction?.grantAmount ?? 0)
-        const bitsAwarded = tierBits > 0 ? Math.max(0, tierBits - bomDeduction) : null
+        const kitDeduction = additionalBitsDeduction ?? 0
+        const bitsAwarded = tierBits > 0 ? Math.max(0, tierBits - bomDeduction - kitDeduction) : null
 
         if (bitsAwarded !== null && bitsAwarded > 0) {
           const tierName = getTierById(effectiveTier!)!.name
+          const noteParts = `${tierBits} − ${bomDeduction} BOM`
+          const noteKitPart = kitDeduction > 0 ? ` − ${kitDeduction} kit` : ''
           await appendLedgerEntry(tx, {
             userId: project!.userId,
             projectId: project!.id,
             amount: bitsAwarded,
             type: CurrencyTransactionType.PROJECT_APPROVED,
-            note: `Build approved — ${tierName} (${tierBits} − ${bomDeduction} BOM = ${bitsAwarded} bits)`,
+            note: `Build approved — ${tierName} (${noteParts}${noteKitPart} = ${bitsAwarded} bits)`,
             createdBy: reviewerId,
           })
         }
