@@ -81,3 +81,26 @@ export async function sendReferralNotification({
     console.error("Failed to send referral notification email:", error);
   }
 }
+
+export async function sendInviteConfirmationEmail({
+  email,
+  firstName,
+}: {
+  email: string;
+  firstName: string;
+}): Promise<void> {
+  const client = getLoopsClient();
+  if (!client) return;
+
+  try {
+    await client.sendTransactionalEmail({
+      transactionalId: "cmnwfonft3vtg0i2tkdyc6g5o",
+      email,
+      dataVariables: {
+        name: firstName,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to send invite confirmation email:", error);
+  }
+}

@@ -121,6 +121,8 @@ export default function AdminUsersPage() {
   const [backfillResult, setBackfillResult] = useState<{ message: string; total: number } | null>(null);
   const [refreshingAvatars, setRefreshingAvatars] = useState(false);
   const [avatarResult, setAvatarResult] = useState<{ cleared: number; toFetch: number } | null>(null);
+  const [backfillingInvites, setBackfillingInvites] = useState(false);
+  const [inviteBackfillResult, setInviteBackfillResult] = useState<{ message: string; total: number; skipped: number; processing: number } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [purchasesModal, setPurchasesModal] = useState<{ user: AdminUser; purchases: UserPurchase[] } | null>(null);
   const [loadingPurchases, setLoadingPurchases] = useState<string | null>(null);
@@ -196,6 +198,22 @@ export default function AdminUsersPage() {
       console.error('Failed to refresh avatars:', error);
     } finally {
       setRefreshingAvatars(false);
+    }
+  }
+
+  async function backfillInviteSideEffects() {
+    setBackfillingInvites(true);
+    setInviteBackfillResult(null);
+    try {
+      const res = await fetch('/api/admin/shop/backfill-invite-side-effects', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setInviteBackfillResult(data);
+      }
+    } catch (error) {
+      console.error('Failed to backfill invite side effects:', error);
+    } finally {
+      setBackfillingInvites(false);
     }
   }
 
@@ -505,6 +523,27 @@ export default function AdminUsersPage() {
               {avatarResult && (
                 <span className="text-xs text-cream-50 self-center">
                   Cleared {avatarResult.cleared} gravatar URLs, fetching {avatarResult.toFetch} avatars — check server logs
+                </span>
+              )}
+              <span className="text-cream-400">|</span>
+              <button
+                onClick={() => {
+                  if (confirm('Send Loops invite email and register on Attend for all Stasis Event Invite purchasers? Already-processed users will be skipped.')) {
+                    backfillInviteSideEffects();
+                  }
+                }}
+                disabled={backfillingInvites}
+                className={`px-3 py-1.5 text-xs uppercase cursor-pointer ${
+                  backfillingInvites
+                    ? 'bg-brown-800 text-cream-50 opacity-50'
+                    : 'bg-orange-500 text-cream-50 hover:bg-orange-400'
+                } transition-colors`}
+              >
+                {backfillingInvites ? 'Backfilling...' : 'Backfill Invite Emails'}
+              </button>
+              {inviteBackfillResult && (
+                <span className="text-xs text-cream-50 self-center">
+                  {inviteBackfillResult.message} ({inviteBackfillResult.processing} to process, {inviteBackfillResult.skipped} skipped) — check server logs
                 </span>
               )}
               {(filterFraud !== null || filterRole !== null || filterAddress !== null || filterPronouns !== null || sortBy !== 'recent') && (

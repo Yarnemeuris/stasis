@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { SHOP_ITEMS, SHOP_ITEM_IDS, EVENT_INVITE_IDS, REQUIRES_STASIS_INVITE_IDS } from "@/lib/shop"
 import { Prisma } from "@/app/generated/prisma/client"
+import { runInvitePurchaseSideEffects } from "@/lib/attend"
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -143,6 +144,16 @@ export async function POST(request: NextRequest) {
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     })
+
+    // Fire-and-forget side effects for Stasis Event Invite purchases
+    if (itemId === SHOP_ITEM_IDS.STASIS_EVENT_INVITE) {
+      runInvitePurchaseSideEffects({
+        email: session.user.email,
+        name: session.user.name,
+      }).catch((err) =>
+        console.error("[shop/purchase] Invite side effects error:", err)
+      )
+    }
 
     return NextResponse.json(result)
   } catch (error) {
