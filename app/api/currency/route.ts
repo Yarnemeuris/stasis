@@ -34,12 +34,16 @@ export async function GET() {
     prisma.bOMItem.findMany({
       where: {
         status: "approved",
-        project: { userId },
+        project: { userId, designStatus: "approved" },
       },
       select: { totalCost: true },
     }),
     prisma.project.aggregate({
-      where: { userId, deletedAt: null },
+      where: {
+        userId,
+        deletedAt: null,
+        designStatus: "approved",
+      },
       _sum: { bomTax: true, bomShipping: true },
     }),
   ])
