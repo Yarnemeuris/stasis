@@ -1853,10 +1853,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             {hasKit && (
               <div className="bg-green-600/15 border border-green-600 p-3 mb-4">
                 <p className="text-green-700 text-sm">
-                  <span className="font-bold uppercase">Kit project</span> — when your design is approved, we&apos;ll ship you a kit with all the components you need. You don&apos;t need to purchase parts yourself.{' '}
-                  <Link href={`/starter-projects/${project.starterProjectId}#kit-contents`} className="underline hover:text-green-500">
-                    View kit contents
-                  </Link>
+                  <span className="font-bold uppercase">Kit project</span> — when your design is approved, we&apos;ll ship you a kit with all the components you need. You don&apos;t need to purchase parts yourself.
                 </p>
               </div>
             )}
