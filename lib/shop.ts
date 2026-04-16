@@ -37,7 +37,7 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
     id: SHOP_ITEM_IDS.STASIS_EVENT_INVITE,
     name: 'Stasis Event Invite',
     description: 'Your ticket to Stasis!',
-    disclaimer: 'Does not include travel.',
+    disclaimer: 'Accommodation included. Does not include travel.',
     bitsCost: 350,
     category: 'invite',
     maxPerUser: 1,
@@ -54,7 +54,7 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
   {
     id: SHOP_ITEM_IDS.FLIGHT_STIPEND,
     name: 'Flight Stipend',
-    description: 'Put bits toward your flight. Each purchase adds $10 to your flight stipend.',
+    description: 'Put bits toward your flight to Stasis or Open Sauce. Each purchase adds $10 to your flight stipend.',
     bitsCost: 10,
     category: 'flight_stipend',
     maxPerUser: 0,
