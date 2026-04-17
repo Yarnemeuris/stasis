@@ -32,7 +32,7 @@ export default function AdminLayout({
       ? pathname === '/admin'
       : tabPath === '/admin/audit'
         ? pathname === '/admin/audit'
-        : pathname.startsWith(tabPath);
+        : pathname === tabPath || pathname.startsWith(tabPath + '/');
 
     return `px-3 sm:px-6 py-3 text-sm uppercase tracking-wider whitespace-nowrap transition-colors border-b-2 -mb-[2px] ${
       isActive
@@ -136,8 +136,8 @@ export default function AdminLayout({
                 </Link>
               )}
               {hasPermission(Permission.MANAGE_CURRENCY) && (
-                <Link href="/admin/purchases" className={getTabClass('/admin/purchases')}>
-                  Purchases
+                <Link href="/admin/shop-orders" className={getTabClass('/admin/shop-orders')}>
+                  Shop Orders
                 </Link>
               )}
               {hasPermission(Permission.MANAGE_CURRENCY) && (

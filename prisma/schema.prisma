@@ -21,12 +21,22 @@ enum ProjectStage {
 }
 
 enum CurrencyTransactionType {
-  PROJECT_APPROVED  // Bits credited when a project build is approved
-  DESIGN_APPROVED   // Pending bits credited when a project design is approved (converted on build approval)
-  ADMIN_GRANT       // Reviewer manually credits bits
-  ADMIN_DEDUCTION   // Reviewer manually debits bits (correction, etc.)
-  SHOP_PURCHASE     // User spends bits on a shop item
-  REVIEWER_PAYMENT  // Bits credited for completing reviews (0.5 bits each)
+  PROJECT_APPROVED        // Bits credited when a project build is approved
+  DESIGN_APPROVED         // Pending bits credited when a project design is approved (converted on build approval)
+  ADMIN_GRANT             // Reviewer manually credits bits
+  ADMIN_DEDUCTION         // Reviewer manually debits bits (correction, etc.)
+  SHOP_PURCHASE           // User spends bits on a shop item
+  SHOP_REFUND             // Bits credited back when a shop order is rejected
+  SHOP_REFUND_REVERSED    // Bits debited when a reject is reverted (undoes a SHOP_REFUND)
+  REVIEWER_PAYMENT        // Bits credited for completing reviews (0.5 bits each)
+}
+
+enum ShopOrderStatus {
+  PENDING
+  ON_HOLD
+  FULFILLED
+  REJECTED
+  CANCELLED
 }
 
 enum ReviewDecision {
@@ -99,6 +109,8 @@ model User {
   goalPrizes           UserGoalPrize[]
   streakReward         StreakReward?
   blueprintImports     BlueprintImport[]
+  shopOrders           ShopOrder[]
+  shopOrderNotes       ShopOrderNote[]      @relation("ShopOrderNoteAuthor")
 
   // Inventory relations
   teamId       String?
@@ -499,6 +511,14 @@ enum AuditAction {
   INVENTORY_TEAM_RENAME
   INVENTORY_TEAM_KICK_MEMBER
   INVENTORY_TEAM_ADD_MEMBER
+
+  // Shop fulfillment admin actions
+  SHOP_ORDER_HOLD
+  SHOP_ORDER_UNHOLD
+  SHOP_ORDER_REJECT
+  SHOP_ORDER_FULFILL
+  SHOP_ORDER_REVERT
+  SHOP_ORDER_NOTE_ADD
 }
 
 model AuditLog {
@@ -531,6 +551,8 @@ model CurrencyTransaction {
   type          CurrencyTransactionType
   note          String?
   shopItemId    String? // Shop item ID for SHOP_PURCHASE transactions
+  shopOrderId   String? // Linked ShopOrder (for SHOP_PURCHASE / SHOP_REFUND / SHOP_REFUND_REVERSED rows)
+  shopOrder     ShopOrder?              @relation(fields: [shopOrderId], references: [id])
   balanceBefore Int // Balance before this entry (audit trail)
   balanceAfter  Int // Balance after this entry
   createdBy     String? // Admin user ID; null if system-generated
@@ -539,25 +561,76 @@ model CurrencyTransaction {
 
   @@index([userId])
   @@index([userId, shopItemId])
+  @@index([shopOrderId])
   @@index([createdAt])
   @@map("currency_transaction")
 }
 
 // Admin-managed shop items (excludes hardcoded Event Invite & Flight Stipend)
 model ShopItem {
-  id              String   @id @default(cuid())
+  id              String      @id @default(cuid())
   name            String
   description     String
   longDescription String?
   imageUrl        String?
   price           Int // Cost in bits
-  maxPerUser      Int      @default(0) // 0 = unlimited, 1 = one per user
-  active          Boolean  @default(true)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  maxPerUser      Int         @default(0) // 0 = unlimited, 1 = one per user
+  active          Boolean     @default(true)
+  sortOrder       Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  orders          ShopOrder[]
 
   @@map("shop_item")
+}
+
+// Mutable order record for physical shop fulfillments.
+// Linked ledger entries (SHOP_PURCHASE / SHOP_REFUND) live on CurrencyTransaction.
+model ShopOrder {
+  id                  String          @id @default(cuid())
+  orderNumber         Int             @unique @default(autoincrement())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shopItemId          String
+  shopItem            ShopItem        @relation(fields: [shopItemId], references: [id])
+  quantity            Int
+  unitBitsCost        Int
+  totalBitsCost       Int
+  estimatedUsdCents   Int             // bits / 2 * 100 (at order time)
+  fulfillmentUsdCents Int?            // entered by admin at fulfill time
+  status              ShopOrderStatus @default(PENDING)
+  trackingNumber      String?
+  trackingCarrier     String?         // auto-detected: "ups" | "usps" | "fedex" | "dhl" | null
+  holdReason          String?
+  rejectionReason     String?
+  encryptedPhone      String          @default("")
+  encryptedAddress    String          @default("")   // AES-256-GCM encrypted JSON snapshot of selected HCA address
+  placedAt            DateTime        @default(now())
+  heldAt              DateTime?
+  rejectedAt          DateTime?
+  fulfilledAt         DateTime?
+  lastActorId         String?
+  notes               ShopOrderNote[]
+  currencyTxns        CurrencyTransaction[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([placedAt])
+  @@index([shopItemId])
+  @@map("shop_order")
+}
+
+model ShopOrderNote {
+  id        String    @id @default(cuid())
+  orderId   String
+  order     ShopOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation("ShopOrderNoteAuthor", fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime  @default(now())
+
+  @@index([orderId])
+  @@map("shop_order_note")
 }
 
 // Temporary RSVP storage (fallback when Airtable is down)

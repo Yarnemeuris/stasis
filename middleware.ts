@@ -52,6 +52,16 @@ function requireAuth(): NextResponse {
 }
 
 export function middleware(request: NextRequest) {
+  // Permanent redirect from the old Purchases tab to the new Shop Orders route.
+  if (
+    request.nextUrl.pathname === "/admin/purchases" ||
+    request.nextUrl.pathname.startsWith("/admin/purchases/")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = url.pathname.replace("/admin/purchases", "/admin/shop-orders");
+    return addSecurityHeaders(NextResponse.redirect(url, 308));
+  }
+
   const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
   const isPrelaunch = process.env.NEXT_PUBLIC_PRELAUNCH_MODE === "true";
   const requireSiteAuth = process.env.REQUIRE_BASICAUTH === "true";

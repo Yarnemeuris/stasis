@@ -5,6 +5,7 @@ import Script from "next/script";
 import "./globals.css";
 import AsteroidCatWrapper from "./components/AsteroidCatWrapper";
 import EventJsonLd from "./components/EventJsonLd";
+import { ToastProvider } from "./components/Toast";
 
 const departureMono = localFont({
   src: "../public/fonts/DepartureMono-Regular.woff2",
@@ -87,7 +88,9 @@ export default function RootLayout({
       </head>
       <body className={`antialiased ${departureMono.variable} ${spaceGrotesk.variable} ${libreBarcode128.variable} ${libreBarcode39.variable}`}>
         <EventJsonLd />
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
         <AsteroidCatWrapper />
       </body>
     </html>

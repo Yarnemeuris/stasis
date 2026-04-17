@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from "@/lib/auth-client";
 import { SHOP_ITEMS, SHOP_ITEM_IDS } from '@/lib/shop';
+import ShopOrderModal from '@/app/components/ShopOrderModal';
 
 interface DbShopItem {
   id: string;
@@ -166,207 +167,6 @@ function PurchaseConfirmModal({
   );
 }
 
-function HoldToBuyButton({ onComplete, disabled, price }: { onComplete: () => Promise<boolean>; disabled: boolean; price: number }) {
-  const [filling, setFilling] = useState(false);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handlePointerDown = () => {
-    if (disabled) return;
-    setFilling(true);
-    holdTimerRef.current = setTimeout(async () => {
-      holdTimerRef.current = null;
-      const success = await onComplete();
-      if (!success) {
-        setFilling(false);
-      }
-    }, 3000);
-  };
-
-  const handleRelease = () => {
-    if (holdTimerRef.current) {
-      clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-      setFilling(false);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    };
-  }, []);
-
-  const label = filling ? `Spending ${price.toLocaleString()} bits...` : 'Hold to Buy';
-
-  return (
-    <button
-      onPointerDown={handlePointerDown}
-      onPointerUp={handleRelease}
-      onPointerLeave={handleRelease}
-      onPointerCancel={handleRelease}
-      disabled={disabled}
-      className="relative w-full overflow-hidden border-2 border-orange-500 bg-cream-200 px-6 py-3 cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {/* Fill bar */}
-      <div
-        className="absolute inset-y-0 left-0 bg-orange-500 pointer-events-none"
-        style={{
-          width: filling ? '100%' : '0%',
-          transition: filling ? 'width 3s linear' : 'width 0.3s ease-out',
-        }}
-      />
-      {/* White text overlay — clipped to match fill progress */}
-      <div
-        className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
-        style={{
-          clipPath: filling ? 'inset(0 0 0 0)' : 'inset(0 100% 0 0)',
-          transition: filling ? 'clip-path 3s linear' : 'clip-path 0.3s ease-out',
-        }}
-      >
-        <span className="text-cream-100 uppercase tracking-wide text-sm font-bold">
-          {label}
-        </span>
-      </div>
-      {/* Orange text (visible on unfilled area) */}
-      <span className="relative text-orange-500 uppercase tracking-wide text-sm font-bold">
-        {label}
-      </span>
-    </button>
-  );
-}
-
-function ItemDetailModal({
-  item,
-  bitsBalance,
-  purchased,
-  onPurchase,
-  onClose,
-}: {
-  item: DbShopItem;
-  bitsBalance: number;
-  purchased: boolean;
-  onPurchase: (itemId: string) => Promise<boolean>;
-  onClose: () => void;
-}) {
-  const [animState, setAnimState] = useState<'idle' | 'purchasing' | 'fading' | 'flying' | 'done'>('idle');
-  const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const canAfford = bitsBalance >= item.price;
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && animState === 'idle') onClose();
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose, animState]);
-
-  const handleHoldComplete = async (): Promise<boolean> => {
-    setAnimState('purchasing');
-    setPurchaseError(null);
-    const success = await onPurchase(item.id);
-    if (success) {
-      setAnimState('fading');
-      setTimeout(() => {
-        setAnimState('flying');
-        setTimeout(() => {
-          setAnimState('done');
-          setTimeout(() => {
-            onClose();
-          }, 500);
-        }, 700);
-      }, 1000);
-      return true;
-    } else {
-      setAnimState('idle');
-      return false;
-    }
-  };
-
-  const isAnimating = animState === 'fading' || animState === 'flying' || animState === 'done';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-[#3D3229]/80"
-        onClick={animState === 'idle' ? onClose : undefined}
-        style={{
-          opacity: animState === 'done' ? 0 : 1,
-          transition: animState === 'done' ? 'opacity 500ms ease' : 'none',
-        }}
-      />
-      <div
-        className="relative max-w-lg w-full mx-4 p-8 border-2"
-        style={{
-          backgroundColor: isAnimating ? 'transparent' : 'var(--color-cream-100)',
-          borderColor: isAnimating ? 'transparent' : 'var(--color-brown-800)',
-          boxShadow: isAnimating ? 'none' : '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-          transition: animState === 'flying' || animState === 'done'
-            ? 'transform 700ms cubic-bezier(0.4, 0, 0.7, 0.2)'
-            : animState !== 'idle'
-              ? 'background-color 400ms ease, border-color 400ms ease, box-shadow 400ms ease'
-              : 'none',
-          transform: animState === 'flying' || animState === 'done' ? 'translateY(150vh)' : 'none',
-        }}
-      >
-        {animState === 'idle' && (
-          <button
-            onClick={onClose}
-            className="absolute -top-4 -right-4 w-10 h-10 flex items-center justify-center bg-cream-100 border border-cream-600 text-brown-800 hover:text-orange-500 text-lg leading-none cursor-pointer transition-colors"
-          >
-            &times;
-          </button>
-        )}
-
-        {item.imageUrl && (
-          <div
-            className="aspect-video overflow-hidden mb-4"
-            style={{
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderColor: isAnimating ? 'transparent' : 'var(--color-cream-400)',
-              backgroundColor: isAnimating ? 'transparent' : 'var(--color-cream-200)',
-              transition: 'border-color 400ms ease, background-color 400ms ease',
-            }}
-          >
-            <img src={item.imageUrl} alt="" className="w-full h-full object-contain" />
-          </div>
-        )}
-
-        <div style={{ opacity: isAnimating ? 0 : 1, transition: 'opacity 400ms ease' }}>
-          <h2 className="text-xl uppercase tracking-wide mb-2 text-brown-800">{item.name}</h2>
-          <p className="text-brown-800 text-sm mb-2 whitespace-pre-wrap">{item.description}</p>
-          {item.longDescription && (
-            <p className="text-brown-800 text-sm mb-4 whitespace-pre-wrap">{item.longDescription}</p>
-          )}
-          {!item.longDescription && <div className="mb-2" />}
-          <p className="text-orange-400 font-bold text-lg mb-6">{item.price.toLocaleString()}&nbsp;Bits</p>
-
-          {purchaseError && (
-            <p className="text-orange-500 text-sm mb-4">{purchaseError}</p>
-          )}
-
-          {purchased && item.maxPerUser > 0 ? (
-            <div className="w-full bg-orange-500/20 border border-orange-500/50 px-6 py-3 text-center">
-              <span className="text-orange-400 uppercase tracking-wide text-sm font-bold">Purchased!</span>
-            </div>
-          ) : canAfford ? (
-            <HoldToBuyButton
-              onComplete={handleHoldComplete}
-              disabled={animState !== 'idle'}
-              price={item.price}
-            />
-          ) : (
-            <div className="w-full bg-cream-300 px-6 py-3 text-center">
-              <span className="text-cream-600 uppercase tracking-wide text-sm">
-                <span className="text-orange-500 font-medium">{(item.price - bitsBalance).toLocaleString()}&nbsp;bits</span> needed
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function ShopPage() {
   const { data: session } = useSession();
@@ -457,48 +257,6 @@ export default function ShopPage() {
     if (!item) return;
     setError(null);
     setConfirmModal({ item, quantity: 1 });
-  };
-
-  const handleDbItemPurchase = async (itemId: string): Promise<boolean> => {
-    setPurchasing(itemId);
-    try {
-      const res = await fetch('/api/shop/purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId, quantity: 1 }),
-      });
-      if (res.ok) {
-        const { newBalance, bitsSpent: cost } = await res.json();
-        pendingBalanceRef.current = newBalance;
-        setPurchasedItems(prev => new Set(prev).add(itemId));
-        setItemTotals(prev => ({
-          ...prev,
-          [itemId]: (prev[itemId] ?? 0) + cost,
-        }));
-        // Add to local purchases list
-        const item = otherItems.find(i => i.id === itemId);
-        if (item) {
-          setPurchases(prev => [{
-            id: Date.now().toString(),
-            itemId,
-            itemName: item.name,
-            imageUrl: item.imageUrl,
-            amount: cost,
-            purchasedAt: new Date().toISOString(),
-          }, ...prev]);
-        }
-        return true;
-      } else {
-        const { error } = await res.json();
-        setError(error || 'Purchase failed');
-        return false;
-      }
-    } catch {
-      setError('Purchase failed');
-      return false;
-    } finally {
-      setPurchasing(null);
-    }
   };
 
   const handlePurchase = async (itemId: string, quantity: number) => {
@@ -828,14 +586,30 @@ export default function ShopPage() {
       )}
 
       {detailItem && (
-        <ItemDetailModal
+        <ShopOrderModal
           item={detailItem}
           bitsBalance={confirmedBits}
-          purchased={purchasedItems.has(detailItem.id)}
-          onPurchase={handleDbItemPurchase}
+          alreadyOwnedCount={Math.floor((itemTotals[detailItem.id] ?? 0) / detailItem.price)}
           onClose={() => {
             setDetailItem(null);
             flushPendingBalance();
+          }}
+          onPlaced={(orderNumber, newBalance) => {
+            pendingBalanceRef.current = newBalance;
+            setPurchasedItems((prev) => new Set(prev).add(detailItem.id));
+            setItemTotals((prev) => ({
+              ...prev,
+              [detailItem.id]: (prev[detailItem.id] ?? 0) + (bitsBalance - newBalance),
+            }));
+            setPurchases((prev) => [{
+              id: `order-${orderNumber}`,
+              itemId: detailItem.id,
+              itemName: detailItem.name,
+              imageUrl: detailItem.imageUrl,
+              amount: bitsBalance - newBalance,
+              purchasedAt: new Date().toISOString(),
+            }, ...prev]);
+            fetchData();
           }}
         />
       )}
