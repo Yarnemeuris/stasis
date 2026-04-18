@@ -1388,7 +1388,7 @@ export default function ReviewDetailPage() {
                     )}
                   </div>
 
-                  {(workUnitsOverride || tierOverride || grantOverride || categoryOverride) && (
+                  {(workUnitsOverride || tierOverride || grantOverride || categoryOverride || (reason.trim() && reason.trim() !== (firstPassReview.reason || '').trim())) && (
                     <div className="mb-3 bg-yellow-500/10 border border-yellow-500/40 p-2">
                       <p className="text-yellow-400 text-xs">
                         Overriding first-pass values:{' '}
@@ -1397,6 +1397,7 @@ export default function ReviewDetailPage() {
                           tierOverride && `tier → ${tierOverride}`,
                           grantOverride && `grant → $${grantOverride}`,
                           categoryOverride && `category → ${categoryOverride}`,
+                          reason.trim() && reason.trim() !== (firstPassReview.reason || '').trim() && 'internal justification',
                         ].filter(Boolean).join(', ')}
                         {' '}(still credited to {firstPassReview.reviewerName || 'original reviewer'})
                       </p>
@@ -1406,7 +1407,7 @@ export default function ReviewDetailPage() {
                     <button
                       onClick={() => submitReview('APPROVED', {
                         feedback: firstPassReview.feedback || undefined,
-                        reason: firstPassReview.reason || undefined,
+                        reason: reason.trim() || firstPassReview.reason || undefined,
                         workUnitsOverride: workUnitsOverride ? parseFloat(workUnitsOverride) : (firstPassReview.workUnitsOverride ?? undefined),
                         tierOverride: tierOverride ? parseInt(tierOverride) : (firstPassReview.tierOverride ?? undefined),
                         grantOverride: grantOverride ? parseInt(grantOverride) : (firstPassReview.grantOverride ?? undefined),
