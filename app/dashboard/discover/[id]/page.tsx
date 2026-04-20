@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import type { ProjectTag, BadgeType } from "@/app/generated/prisma/enums";
 import type { PublicTimelineItem } from '@/app/api/discover/[id]/timeline/route';
 import { fixMarkdownImages } from '@/lib/markdown';
+import { UnapproveProjectModal } from '@/app/components/admin/UnapproveProjectModal';
 
 const MDPreview = dynamic(
   () => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown),
@@ -173,6 +174,7 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
   const [loading, setLoading] = useState(true);
   const [kudosLoading, setKudosLoading] = useState(false);
   const [adminActioning, setAdminActioning] = useState(false);
+  const [unapproveStage, setUnapproveStage] = useState<'design' | 'build' | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -222,11 +224,13 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
 
   const handleAdminAction = async (action: string) => {
     if (!project) return;
+
+    if (action === 'unapprove_design') { setUnapproveStage('design'); return; }
+    if (action === 'unapprove_build') { setUnapproveStage('build'); return; }
+
     const confirmMessages: Record<string, string> = {
       hide: 'Hide this project from the public gallery?',
       unhide: 'Unhide this project (make it visible in the gallery again)?',
-      unapprove_design: 'Unapprove the design? This will reset design status to in_review and build status to draft.',
-      unapprove_build: 'Unapprove the build? This will reset build status to in_review.',
     };
     if (!confirm(confirmMessages[action] || `Perform action: ${action}?`)) return;
 
@@ -241,13 +245,20 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
         const data = await res.json();
         setProject(prev => prev ? { ...prev, ...data } : prev);
       } else {
-        const data = await res.json();
-        alert(data.error || 'Action failed');
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || data.error || 'Action failed');
       }
     } catch {
       alert('Action failed');
     } finally {
       setAdminActioning(false);
+    }
+  };
+
+  const handleUnapproveSuccess = (data: { partialFailures?: string[] } & Record<string, unknown>) => {
+    setProject(prev => prev ? { ...prev, ...data } : prev);
+    if (Array.isArray(data.partialFailures) && data.partialFailures.length > 0) {
+      alert(`Un-approve completed, but some cleanup steps failed:\n\n${data.partialFailures.join('\n')}\n\nSee the audit log for full details.`);
     }
   };
 
@@ -367,7 +378,7 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
                 disabled={adminActioning}
                 className="px-3 py-1.5 text-xs uppercase tracking-wider border border-yellow-600 bg-yellow-600/10 text-yellow-600 hover:bg-yellow-600/20 transition-colors cursor-pointer disabled:opacity-50"
               >
-                Unapprove Design
+                Unapprove Design{project.buildStatus === 'approved' ? ' + Build' : ''}
               </button>
             )}
             {project.buildStatus === 'approved' && (
@@ -428,6 +439,14 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
         </h2>
         <PublicTimeline items={timeline} />
       </div>
+
+      <UnapproveProjectModal
+        isOpen={unapproveStage !== null}
+        stage={unapproveStage}
+        projectId={projectId}
+        onClose={() => setUnapproveStage(null)}
+        onSuccess={handleUnapproveSuccess}
+      />
     </div>
   );
 }

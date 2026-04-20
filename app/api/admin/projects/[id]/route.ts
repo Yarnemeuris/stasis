@@ -4,6 +4,8 @@ import { requireAdmin, requirePermission } from "@/lib/admin-auth"
 import { Permission } from "@/lib/permissions"
 import { logAdminAction, AuditAction } from "@/lib/audit"
 import { fetchHackatimeProjectSeconds } from "@/lib/hackatime"
+import { sanitize } from "@/lib/sanitize"
+import { reverseDesignApproval, reverseBuildApproval, ReversalError } from "@/lib/project-approval-reversal"
 
 export async function GET(
   request: NextRequest,
@@ -143,41 +145,68 @@ export async function PATCH(
     return NextResponse.json({ hiddenFromGallery: false })
   }
 
-  if (action === "unapprove_design") {
-    if (project.designStatus !== "approved") {
-      return NextResponse.json({ error: "Design is not approved" }, { status: 400 })
-    }
-    await prisma.$transaction(async (tx) => {
-      await tx.project.update({
-        where: { id },
-        data: { designStatus: "in_review", buildStatus: "draft" },
-      })
-      // Remove any stale DESIGN submissions, then create a fresh one
-      await tx.projectSubmission.deleteMany({ where: { projectId: id, stage: "DESIGN" } })
-      await tx.projectSubmission.create({
-        data: { projectId: id, stage: "DESIGN" },
-      })
-    })
-    await logAdminAction(AuditAction.ADMIN_UNAPPROVE_DESIGN, adminId, adminEmail, "Project", id)
-    return NextResponse.json({ designStatus: "in_review", buildStatus: "draft" })
-  }
+  if (action === "unapprove_design" || action === "unapprove_build") {
+    const rawReason = typeof body.reason === "string" ? body.reason.trim() : ""
+    const reasonConfirmedEmpty = body.reasonConfirmedEmpty === true
+    const allowNegativeBalance = body.allowNegativeBalance === true
 
-  if (action === "unapprove_build") {
-    if (project.buildStatus !== "approved") {
-      return NextResponse.json({ error: "Build is not approved" }, { status: 400 })
+    if (!rawReason && !reasonConfirmedEmpty) {
+      return NextResponse.json(
+        { error: "reason_required_or_confirm", message: "Provide a reason or confirm un-approval without one" },
+        { status: 400 },
+      )
     }
-    await prisma.$transaction(async (tx) => {
-      await tx.project.update({
-        where: { id },
-        data: { buildStatus: "in_review" },
+    const sanitizedReason = rawReason ? sanitize(rawReason) : null
+
+    try {
+      const outcome = action === "unapprove_design"
+        ? await reverseDesignApproval(id, { adminId, adminEmail, reason: sanitizedReason, allowNegativeBalance })
+        : await reverseBuildApproval(id, { adminId, adminEmail, reason: sanitizedReason, allowNegativeBalance })
+
+      const partialFailures: string[] = []
+      for (const err of outcome.airtable.errors) {
+        partialFailures.push(`Airtable ${err.stage}: ${err.error}`)
+      }
+      if (outcome.unifiedDb.error) {
+        partialFailures.push(`Unified DB: ${outcome.unifiedDb.error}`)
+      }
+      if (outcome.unifiedDb.skipped === "no_write_access" && outcome.unifiedDb.attempted.length > 0) {
+        partialFailures.push(`Unified DB: API key lacks delete permission on ${outcome.unifiedDb.attempted.length} linked record(s); manual cleanup required`)
+      }
+
+      await logAdminAction(
+        action === "unapprove_design" ? AuditAction.ADMIN_UNAPPROVE_DESIGN : AuditAction.ADMIN_UNAPPROVE_BUILD,
+        adminId,
+        adminEmail,
+        "Project",
+        id,
+        {
+          reason: sanitizedReason,
+          reasonConfirmedEmpty: !sanitizedReason ? true : undefined,
+          forcedNegativeBalance: allowNegativeBalance ? true : undefined,
+          outcome,
+        },
+      )
+
+      return NextResponse.json({
+        designStatus: outcome.postgres.projectAfter.designStatus,
+        buildStatus: outcome.postgres.projectAfter.buildStatus,
+        balanceBefore: outcome.postgres.balanceBefore,
+        balanceAfter: outcome.postgres.balanceAfter,
+        ledgerEntries: outcome.postgres.ledgerEntries,
+        airtableDeleted: outcome.airtable.records,
+        unifiedDb: outcome.unifiedDb,
+        partialFailures,
       })
-      await tx.projectSubmission.deleteMany({ where: { projectId: id, stage: "BUILD" } })
-      await tx.projectSubmission.create({
-        data: { projectId: id, stage: "BUILD" },
-      })
-    })
-    await logAdminAction(AuditAction.ADMIN_UNAPPROVE_BUILD, adminId, adminEmail, "Project", id)
-    return NextResponse.json({ buildStatus: "in_review" })
+    } catch (err) {
+      if (err instanceof ReversalError) {
+        return NextResponse.json(
+          { error: err.code, message: err.message, detail: err.detail },
+          { status: err.status },
+        )
+      }
+      throw err
+    }
   }
 
   if (action === "update_grant") {

@@ -491,6 +491,80 @@ export async function submitYSWSProjectSubmission(data: {
   await base(tableName).create([{ fields }]);
 }
 
+// Look up local YSWS Project Submission row(s) for a given (Stasis ID, Stage).
+// Returns local record IDs plus any unified-DB record IDs stored in the "Automation - YSWS Record ID"
+// back-link field, then deletes the local rows. The unified-DB record IDs let downstream
+// code remove the corresponding rows in the unified base by exact ID (Code URL is not
+// unique across programs, and design/build share the same Code URL).
+export async function deleteYSWSProjectSubmission(
+  stasisId: string,
+  stage: 'Design' | 'Build',
+): Promise<{ deleted: string[]; unifiedRecordIds: string[]; error?: string }> {
+  const base = getAirtableBase();
+  if (!base) {
+    return { deleted: [], unifiedRecordIds: [], error: 'Airtable credentials not configured' };
+  }
+
+  const tableName = process.env.AIRTABLE_YSWS_TABLE_NAME || 'YSWS Project Submission';
+  const escapedId = escapeAirtableValue(stasisId);
+
+  try {
+    const records = await base(tableName)
+      .select({
+        filterByFormula: `AND({Stasis ID} = '${escapedId}', {Stage} = '${stage}')`,
+        maxRecords: 10,
+      })
+      .firstPage();
+
+    if (records.length === 0) return { deleted: [], unifiedRecordIds: [] };
+
+    const unifiedRecordIds: string[] = [];
+    for (const r of records) {
+      const linked = r.get('Automation - YSWS Record ID');
+      if (typeof linked === 'string' && linked.trim()) unifiedRecordIds.push(linked.trim());
+    }
+
+    const ids = records.map((r) => r.id);
+    await base(tableName).destroy(ids);
+    return { deleted: ids, unifiedRecordIds };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { deleted: [], unifiedRecordIds: [], error: message };
+  }
+}
+
+// Delete specific rows from the unified DB Approved Projects table by exact record ID.
+// Callers must supply the IDs captured from the local YSWS Project Submission back-link
+// — do not match by Code URL, because the same URL can appear across programs and across
+// design/build stages.
+export async function deleteUnifiedDbProjectRecords(
+  recordIds: string[],
+): Promise<{ deleted: string[]; attempted: string[]; skipped?: 'no_write_access' | 'empty'; error?: string }> {
+  if (recordIds.length === 0) {
+    return { deleted: [], attempted: [], skipped: 'empty' };
+  }
+
+  const apiKey = process.env.AIRTABLE_API_KEY;
+  if (!apiKey) {
+    return { deleted: [], attempted: recordIds, error: 'Airtable credentials not configured' };
+  }
+
+  const unifiedBaseId = process.env.AIRTABLE_UNIFIED_BASE_ID || 'app3A5kJwYqxMLOgh';
+  const approvedProjectsTable = process.env.AIRTABLE_UNIFIED_APPROVED_TABLE || 'tblzWWGUYHVH7Zyqf';
+
+  try {
+    const base = new Airtable({ apiKey }).base(unifiedBaseId);
+    await base(approvedProjectsTable).destroy(recordIds);
+    return { deleted: recordIds, attempted: recordIds };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/403|INVALID_PERMISSIONS|UNAUTHORIZED/i.test(message)) {
+      return { deleted: [], attempted: recordIds, skipped: 'no_write_access', error: message };
+    }
+    return { deleted: [], attempted: recordIds, error: message };
+  }
+}
+
 export async function syncProjectToAirtable(
   userId: string,
   project: { id: string; tier?: number | null; githubRepo: string | null; description: string | null; coverImage: string | null; starterProjectId?: string | null; workSessions: { hoursClaimed: number; stage?: string }[] },

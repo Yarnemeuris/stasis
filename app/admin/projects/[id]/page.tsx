@@ -16,6 +16,7 @@ import { getTierById, TIERS } from "@/lib/tiers";
 import { fixMarkdownImages } from '@/lib/markdown';
 import { getBadgeImage } from "@/lib/badges";
 import { formatPrice, bomItemTotal } from "@/lib/format";
+import { UnapproveProjectModal } from "@/app/components/admin/UnapproveProjectModal";
 
 type BadgeType = 
   | "I2C" | "SPI" | "WIFI" | "BLUETOOTH" | "OTHER_RF"
@@ -166,6 +167,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
   const [buildAirtableGrantAmount, setBuildAirtableGrantAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [adminActioning, setAdminActioning] = useState(false);
+  const [unapproveStage, setUnapproveStage] = useState<'design' | 'build' | null>(null);
   const [airtableSyncing, setAirtableSyncing] = useState(false);
   const [reviewingSession, setReviewingSession] = useState<string | null>(null);
   const [expandedScreenshot, setExpandedScreenshot] = useState<string | null>(null);
@@ -261,11 +263,13 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
 
   const handleAdminAction = async (action: string) => {
     if (!project) return;
+
+    if (action === 'unapprove_design') { setUnapproveStage('design'); return; }
+    if (action === 'unapprove_build') { setUnapproveStage('build'); return; }
+
     const confirmMessages: Record<string, string> = {
       hide: 'Hide this project from the public gallery?',
       unhide: 'Unhide this project (make it visible in the gallery again)?',
-      unapprove_design: 'Unapprove the design? This will reset design status to in_review and build status to draft.',
-      unapprove_build: 'Unapprove the build? This will reset build status to in_review.',
       delete: 'Soft-delete this project? It will be hidden from all non-admin views.',
       undelete: 'Restore this project? It will become visible again.',
     };
@@ -282,13 +286,20 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
         const data = await res.json();
         setProject(prev => prev ? { ...prev, ...data } : prev);
       } else {
-        const data = await res.json();
-        alert(data.error || 'Action failed');
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || data.error || 'Action failed');
       }
     } catch {
       alert('Action failed');
     } finally {
       setAdminActioning(false);
+    }
+  };
+
+  const handleUnapproveSuccess = (data: { partialFailures?: string[] } & Record<string, unknown>) => {
+    setProject(prev => prev ? { ...prev, ...data } : prev);
+    if (Array.isArray(data.partialFailures) && data.partialFailures.length > 0) {
+      alert(`Un-approve completed, but some cleanup steps failed:\n\n${data.partialFailures.join('\n')}\n\nSee the audit log for full details.`);
     }
   };
 
@@ -628,7 +639,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
                     disabled={adminActioning}
                     className="px-3 py-1.5 text-xs uppercase tracking-wider border border-yellow-600 bg-yellow-600/10 text-yellow-600 hover:bg-yellow-600/20 transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    Unapprove Design
+                    Unapprove Design{project.buildStatus === 'approved' ? ' + Build' : ''}
                   </button>
                 )}
                 {/* Unapprove build */}
@@ -1246,7 +1257,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
           {/* Build Approval Section - only show when design is approved */}
           {project.designStatus === 'approved' && (
             isBuildInReview ? (
-              <div className="bg-cyan-50 border-2 border-cyan-500/50 p-6 mb-6">
+              <div className="bg-brown-800 border-2 border-cream-500/20 p-6 mb-6">
                 <h2 className="text-cream-50 text-xl uppercase tracking-wide mb-4">Build Approval</h2>
                 
                 {!allSessionsReviewed && (
@@ -1448,6 +1459,14 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
           <img src={expandedScreenshot} alt="Cart screenshot" className="max-w-full max-h-full object-contain" />
         </div>
       )}
+
+      <UnapproveProjectModal
+        isOpen={unapproveStage !== null}
+        stage={unapproveStage}
+        projectId={projectId}
+        onClose={() => setUnapproveStage(null)}
+        onSuccess={handleUnapproveSuccess}
+      />
     </>
   );
 }
