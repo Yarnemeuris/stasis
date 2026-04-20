@@ -32,6 +32,13 @@ export const REQUIRES_STASIS_INVITE_IDS: readonly ShopItemId[] = [
   SHOP_ITEM_IDS.POST_EVENT_ACCOMMODATION,
 ]
 
+/** IDs of items that can be paid for with pending (design-approved) bits. */
+export const PENDING_BITS_ELIGIBLE_IDS: readonly ShopItemId[] = [
+  SHOP_ITEM_IDS.STASIS_EVENT_INVITE,
+  SHOP_ITEM_IDS.PRE_EVENT_ACCOMMODATION,
+  SHOP_ITEM_IDS.POST_EVENT_ACCOMMODATION,
+]
+
 export const SHOP_ITEMS: readonly ShopItem[] = [
   {
     id: SHOP_ITEM_IDS.STASIS_EVENT_INVITE,

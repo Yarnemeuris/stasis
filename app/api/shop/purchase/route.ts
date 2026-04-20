@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
-import { SHOP_ITEMS, SHOP_ITEM_IDS, EVENT_INVITE_IDS, REQUIRES_STASIS_INVITE_IDS } from "@/lib/shop"
+import { SHOP_ITEMS, SHOP_ITEM_IDS, EVENT_INVITE_IDS, REQUIRES_STASIS_INVITE_IDS, PENDING_BITS_ELIGIBLE_IDS } from "@/lib/shop"
 import { Prisma } from "@/app/generated/prisma/client"
 import { runInvitePurchaseSideEffects } from "@/lib/attend"
 
@@ -101,9 +101,9 @@ export async function POST(request: NextRequest) {
       `
       const pendingBits = Number(pendingRows[0]?.pending ?? 0)
 
-      // Only the Stasis Event Invite can be purchased with pending bits;
+      // Stasis event invite + accommodations can be purchased with pending bits;
       // all other items require confirmed (build-approved) bits only
-      const effectiveBalance = itemId === SHOP_ITEM_IDS.STASIS_EVENT_INVITE
+      const effectiveBalance = (PENDING_BITS_ELIGIBLE_IDS as readonly string[]).includes(itemId)
         ? balance
         : balance - pendingBits
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from "@/lib/auth-client";
-import { SHOP_ITEMS, SHOP_ITEM_IDS } from '@/lib/shop';
+import { SHOP_ITEMS, SHOP_ITEM_IDS, PENDING_BITS_ELIGIBLE_IDS } from '@/lib/shop';
 import ShopOrderModal from '@/app/components/ShopOrderModal';
 
 interface DbShopItem {
@@ -81,7 +81,7 @@ function PurchaseConfirmModal({
         <p className="text-brown-800 mb-6">
           {showQuantity
             ? `Buy ${item.name} to put toward your flight?`
-            : <>Spend <span className="text-orange-500 font-medium">{item.bitsCost.toLocaleString()}&nbsp;{item.id === SHOP_ITEM_IDS.STASIS_EVENT_INVITE ? 'pending bits' : 'bits'}</span> on {item.name}?</>
+            : <>Spend <span className="text-orange-500 font-medium">{item.bitsCost.toLocaleString()}&nbsp;{(PENDING_BITS_ELIGIBLE_IDS as readonly string[]).includes(item.id) ? 'pending bits' : 'bits'}</span> on {item.name}?</>
           }
         </p>
 
@@ -139,7 +139,7 @@ function PurchaseConfirmModal({
           <div className="mb-6 bg-cream-200 border border-cream-400 p-4">
             <div className="flex justify-between text-brown-800 text-sm">
               <span>Cost</span>
-              <span className="font-bold">{totalCost.toLocaleString()}&nbsp;{item.id === SHOP_ITEM_IDS.STASIS_EVENT_INVITE ? 'pending bits' : 'bits'}</span>
+              <span className="font-bold">{totalCost.toLocaleString()}&nbsp;{(PENDING_BITS_ELIGIBLE_IDS as readonly string[]).includes(item.id) ? 'pending bits' : 'bits'}</span>
             </div>
           </div>
         )}
@@ -314,9 +314,11 @@ export default function ShopPage() {
   const hasEventInvite = inviteItems.some(item => purchasedItems.has(item.id));
   const hasStasisInvite = purchasedItems.has(SHOP_ITEM_IDS.STASIS_EVENT_INVITE);
 
-  // Only the Stasis ticket can be purchased with pending bits
+  // Stasis ticket + accommodations can be purchased with pending bits
+  const canUsePendingBits = (itemId: string) =>
+    (PENDING_BITS_ELIGIBLE_IDS as readonly string[]).includes(itemId);
   const getEffectiveBalance = (itemId: string) =>
-    itemId === SHOP_ITEM_IDS.STASIS_EVENT_INVITE ? bitsBalance : confirmedBits;
+    canUsePendingBits(itemId) ? bitsBalance : confirmedBits;
 
   return (
     <div className="space-y-8">
@@ -448,14 +450,16 @@ export default function ShopPage() {
               {/* Accommodation - full width below flight stipend */}
               {accommodationItems.length > 0 && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {accommodationItems.map((accItem) => (
+                {accommodationItems.map((accItem) => {
+                  const effectiveBal = getEffectiveBalance(accItem.id);
+                  return (
                   <div key={accItem.id} className={`bg-cream-100 border-2 p-6 flex flex-col gap-4 ${
-                    !hasStasisInvite ? 'border-cream-300 opacity-60' : purchasedItems.has(accItem.id) || confirmedBits >= accItem.bitsCost ? 'border-orange-500' : 'border-cream-400'
+                    !hasStasisInvite ? 'border-cream-300 opacity-60' : purchasedItems.has(accItem.id) || effectiveBal >= accItem.bitsCost ? 'border-orange-500' : 'border-cream-400'
                   }`}>
                     <div className="flex-1">
                       <h3 className="text-brown-800 text-xl font-medium mb-1">{accItem.name}</h3>
                       <p className="text-brown-800 text-sm mb-3">{accItem.description}</p>
-                      <p className="text-orange-400 font-bold text-lg">{accItem.bitsCost.toLocaleString()}&nbsp;Bits</p>
+                      <p className="text-orange-400 font-bold text-lg">{accItem.bitsCost.toLocaleString()}&nbsp;Pending Bits</p>
                     </div>
                     <div>
                       {purchasedItems.has(accItem.id) ? (
@@ -468,7 +472,7 @@ export default function ShopPage() {
                             Buy Stasis Event Invite first
                           </span>
                         </div>
-                      ) : confirmedBits >= accItem.bitsCost ? (
+                      ) : effectiveBal >= accItem.bitsCost ? (
                         <button
                           onClick={() => openConfirmModal(accItem.id)}
                           disabled={purchasing === accItem.id}
@@ -481,13 +485,14 @@ export default function ShopPage() {
                       ) : (
                         <div className="bg-cream-300 px-6 py-3 text-center w-full">
                           <span className="text-cream-600 uppercase tracking-wide text-sm">
-                            <span className="text-orange-500 font-medium">{(accItem.bitsCost - confirmedBits).toLocaleString()}&nbsp;bits</span> needed
+                            <span className="text-orange-500 font-medium">{(accItem.bitsCost - effectiveBal).toLocaleString()}&nbsp;pending bits</span> needed
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               )}
             </div>
