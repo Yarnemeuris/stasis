@@ -26,12 +26,14 @@ interface Reviewer {
 
 interface ReviewItem {
   id: string;
+  source?: 'project_review_action' | 'submission_review';
   result: string;
   feedback: string;
   reason: string | null;
   createdAt: string;
   invalidated: boolean;
   isAdminReview: boolean;
+  isFirstPass?: boolean;
   reviewer: Reviewer;
   stage: string;
   frozenWorkUnits: number | null;
@@ -284,8 +286,23 @@ export default function AuditReviewsPage() {
                     }`}>
                       {review.stage}
                     </span>
-                    {review.isAdminReview && (
+                    {review.isFirstPass ? (
+                      <span
+                        className="text-xs uppercase px-2 py-0.5 bg-cyan-100 text-cyan-800"
+                        title="Non-admin first-pass review (does not finalize the project)"
+                      >
+                        First-pass
+                      </span>
+                    ) : review.isAdminReview && (
                       <span className="text-xs uppercase px-2 py-0.5 bg-purple-100 text-purple-800">Admin</span>
+                    )}
+                    {review.source === 'submission_review' && !review.isFirstPass && (
+                      <span
+                        className="text-xs uppercase px-2 py-0.5 bg-indigo-100 text-indigo-800"
+                        title="Admin review recorded against the submission"
+                      >
+                        Submission review
+                      </span>
                     )}
                     {review.invalidated && (
                       <span className="text-xs uppercase px-2 py-0.5 bg-red-100 text-red-800">Invalidated</span>
