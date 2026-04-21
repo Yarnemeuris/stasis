@@ -375,7 +375,6 @@ export default function ReviewDetailPage() {
     workUnitsOverride?: number;
     tierOverride?: number;
     grantOverride?: number;
-    firstPassReviewerId?: string;
   }) {
     const effectiveFeedback = (overrides?.feedback ?? feedback.trim()) || 'Awesome project!';
 
@@ -399,7 +398,6 @@ export default function ReviewDetailPage() {
       else if (grantOverride) body.grantOverride = parseInt(grantOverride);
       if (additionalBitsDeduction) body.additionalBitsDeduction = parseInt(additionalBitsDeduction);
       if (categoryOverride && data?.isAdmin) body.categoryOverride = categoryOverride;
-      if (overrides?.firstPassReviewerId) body.firstPassReviewerId = overrides.firstPassReviewerId;
 
       const res = await fetch(`/api/reviews/${id}/submit`, {
         method: 'POST',
@@ -1411,7 +1409,6 @@ export default function ReviewDetailPage() {
                         workUnitsOverride: workUnitsOverride ? parseFloat(workUnitsOverride) : (firstPassReview.workUnitsOverride ?? undefined),
                         tierOverride: tierOverride ? parseInt(tierOverride) : (firstPassReview.tierOverride ?? undefined),
                         grantOverride: grantOverride ? parseInt(grantOverride) : (firstPassReview.grantOverride ?? undefined),
-                        firstPassReviewerId: firstPassReview.reviewerId || undefined,
                       })}
                       disabled={submitting || project.user.fraudConvicted}
                       title={project.user.fraudConvicted ? 'Cannot approve fraud-convicted users' : undefined}

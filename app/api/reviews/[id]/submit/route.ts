@@ -33,7 +33,6 @@ export async function POST(
     additionalBitsDeduction,
     categoryOverride,
     submissionId: clientSubmissionId,
-    firstPassReviewerId,
   } = body
 
   // Validate result
@@ -184,9 +183,14 @@ export async function POST(
   const sanitizedFeedback = sanitize(feedback.trim())
   const stageKey = stage.toLowerCase() as "design" | "build"
 
-  // For design approvals, default grant to BOM cost if not explicitly overridden
+  // For design approvals, default grant to BOM cost if not explicitly overridden.
+  // `effectiveGrant` drives ledger math and is stored on ProjectReviewAction.grantAmount.
+  // `explicitGrantOverride` is what the reviewer actually chose, and is what we store on
+  // SubmissionReview.grantOverride — so the UI only shows an override badge when the
+  // reviewer really set one, not when the code auto-filled BOM cost.
   const bomCostTotal = totalBomCost(project.bomItems, project.bomTax, project.bomShipping)
-  const effectiveGrant = grantOverride ?? (stageKey === "design" ? (bomCostTotal > 0 ? Math.ceil(bomCostTotal) : 0) : null)
+  const explicitGrantOverride = (typeof grantOverride === "number") ? grantOverride : null
+  const effectiveGrant = explicitGrantOverride ?? (stageKey === "design" ? (bomCostTotal > 0 ? Math.ceil(bomCostTotal) : 0) : null)
 
   // Map result to the existing decision format
   if (result === "APPROVED") {
@@ -217,7 +221,7 @@ export async function POST(
               feedback: sanitizedFeedback,
               workUnitsOverride: workUnitsOverride ?? null,
               tierOverride: tierOverride ?? null,
-              grantOverride: effectiveGrant ?? null,
+              grantOverride: explicitGrantOverride,
             },
           })
         }
@@ -385,11 +389,10 @@ export async function POST(
         updateData.bitsAwarded = bitsAwarded
       }
 
-      // Create review action record — attribute to the original first-pass
-      // reviewer when the admin is sending their review as-is
-      const timelineReviewerId = (typeof firstPassReviewerId === "string" && firstPassReviewerId)
-        ? firstPassReviewerId
-        : reviewerId
+      // Attribute the approval to the admin who actually finalized it. The first-pass
+      // reviewer's contribution is preserved on SubmissionReview and rendered separately
+      // in timelines; don't overwrite the admin here or it looks like the first-pass
+      // reviewer approved unilaterally.
       await tx.projectReviewAction.create({
         data: {
           projectId: project!.id,
@@ -398,7 +401,7 @@ export async function POST(
           comments: sanitizedFeedback,
           grantAmount: effectiveGrant ?? null,
           tier: tierOverride ?? null,
-          reviewerId: timelineReviewerId,
+          reviewerId,
         },
       })
 
