@@ -142,3 +142,24 @@ Never AI-generate migration files. Always use `npx prisma migrate dev --name <de
 
 - Use `Readonly<>` for component prop types
 - Sanitize user input in API routes: `sanitize(body.x)` for plain text, `sanitizeHtml(body.x)` for HTML (both from `@/lib/sanitize`)
+
+## Design Context
+
+Full brief in `.impeccable.md`. Short version:
+
+- **Aesthetic:** retrofuturistic single-color console — Fallout Pip-Boy, e-ink, amber CRT. Warm monochrome *display surface*, not paper. Three words: *serialized, instrumented, warm*. Audience is dual-cohort teens 13–18 (welcoming beginners, respecting experts — no cartoon gamification).
+- **Theme:** light mode default (cream readout + brown ink + orange accent). Dark mode is a deliberate *room* on starter-projects and admin — orange-on-dark-brown, a single-phosphor display, never cyan-on-black.
+- **Palette (60-30-10):** cream `#F5F3EF`/`#EBE8E0`/`#D5CCB7` carries, brown `#3B3026`/`#403529` grounds, orange `#D95D39`/`#E86A3A` is the only saturated accent — only when it *means* something (CTA, selection, live state).
+- **Fonts:** Space Grotesk (body), Departure Mono (signature pixel display — readouts, serials, labels), Libre Barcode 128 & 39 (decorative strips). Departure Mono is the brand voice.
+- **Reuse, don't reinvent:** `MagneticCorners`, `NoiseOverlay`/`PlatformNoiseOverlay` (display grain, not paper), `DottedLine`, `HoverScramble`, `ASCIIArt`, barcode strips, inspection-stamp status pills.
+- **Reference surfaces:** landing page (`app/page.tsx`) and starter projects page (`app/starter-projects/page.tsx`) are the bar — pull from these, not nearby pages.
+
+**Hard rules:**
+
+- **No rounded corners.** Sharp edges everywhere by default. Circles only when geometry truly demands it (avatars, true dots).
+- **Departure Mono size discipline.** Pixel font — different sizes produce misaligned mixels. Ideally 1–2 sizes per surface; build hierarchy via weight, letter-spacing, CAPS, color contrast, spacing, rules, and inversion.
+- **Console, not parchment.** Grain is a display artifact, not paper texture. Borders are hairline or dashed. Never `backdrop-blur` as decoration.
+- **Instrumented corners, not nested cards.** Prefer bracket framing and composition over box-in-box.
+- **Retro as craft, not costume.** No CRT scanlines, no Win95 chrome, no fake-phosphor glow.
+
+**Absolute bans** (AI tells): gradient text, `border-left: >1px` accent stripes, SaaS purple-to-blue gradients, glassmorphism as decoration, cyan-on-black dark mode.
