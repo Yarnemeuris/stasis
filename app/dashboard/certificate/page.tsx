@@ -96,7 +96,7 @@ export default function CertificatePage() {
       </p>
 
       {/* Recognized by */}
-      <div className="mb-10">
+      <div className="mb-4">
         <div className="relative">
           <div className="absolute -top-[12px] left-0 right-0 flex items-center justify-center gap-3 z-10">
             <div className="w-[20px] h-px bg-[#d95d39]" />
@@ -116,6 +116,10 @@ export default function CertificatePage() {
           </div>
         </div>
       </div>
+
+      <p className="text-[14px] md:text-[18px] leading-snug text-brown-800/60 mb-8">
+        On the Stasis platform, that works out to 350 bits earned across your builds.
+      </p>
 
       {/* Progress text */}
       {progressText && (
