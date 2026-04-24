@@ -57,7 +57,7 @@ function activityColor(days: number | null): string {
 }
 
 function activityBadge(days: number | null): { label: string; className: string } {
-  if (days === null) return { label: 'No activity', className: 'bg-cream-300 text-cream-600' };
+  if (days === null) return { label: 'No activity', className: 'bg-cream-300 text-brown-800' };
   if (days <= 3) return { label: `${days}d ago`, className: 'bg-green-100 text-green-700' };
   if (days <= 7) return { label: `${days}d ago`, className: 'bg-yellow-100 text-yellow-700' };
   if (days <= 14) return { label: `${days}d ago`, className: 'bg-orange-100 text-orange-700' };

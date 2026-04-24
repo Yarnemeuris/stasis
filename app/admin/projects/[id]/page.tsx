@@ -609,7 +609,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
                 ) : project.hackatimeTrustLevel === 'green' ? (
                   <span className="ml-2 text-xs bg-green-100 text-green-800 border border-green-300 px-2 py-0.5 uppercase">Trusted</span>
                 ) : (
-                  <span className="ml-2 text-xs bg-brown-900 text-cream-700 border border-cream-500/20 px-2 py-0.5 uppercase">Unscored</span>
+                  <span className="ml-2 text-xs bg-brown-900 text-cream-50 border border-cream-500/20 px-2 py-0.5 uppercase">Unscored</span>
                 )}
                 {project.user.verificationStatus === 'verified' ? (
                   <span className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 uppercase">IDV Verified</span>

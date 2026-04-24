@@ -375,7 +375,7 @@ function HorizontalFunnel({ funnel, title, labels, order, bare }: {
                             {s.count}
                           </span>
                           <span
-                            className="text-cream-50/40 font-mono text-sm"
+                            className="text-cream-50/60 font-mono text-sm"
                             style={{ textAlign: 'right' }}
                           >
                             {s.pctOfTotal.toFixed(1)}%
@@ -1020,8 +1020,8 @@ export default function StatsPage() {
                         <span className="text-cream-50/60 text-xs">{p.userName || p.userEmail}</span>
                         <span className="text-cream-50/40 text-xs">·</span>
                         <span className={`text-xs uppercase ${p.stage === 'Design' ? 'text-blue-400' : 'text-green-400'}`}>{p.stage}</span>
-                        {p.tier && <span className="text-cream-50/40 text-xs">· Tier {p.tier}</span>}
-                        {p.reviewedAt && <span className="text-cream-50/40 text-xs">· {new Date(p.reviewedAt).toLocaleDateString()}</span>}
+                        {p.tier && <span className="text-cream-50/60 text-xs">· Tier {p.tier}</span>}
+                        {p.reviewedAt && <span className="text-cream-50/60 text-xs">· {new Date(p.reviewedAt).toLocaleDateString()}</span>}
                       </div>
                     </div>
                     <button
