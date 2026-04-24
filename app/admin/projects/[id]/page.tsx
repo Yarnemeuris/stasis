@@ -911,7 +911,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
           {project.designSubmissionNotes && (
             <div className="bg-yellow-100 border-2 border-yellow-500/50 p-4 mb-6">
               <p className="text-yellow-700 text-xs uppercase mb-2">Design Submission Notes from User</p>
-              <p className="text-cream-50 text-sm whitespace-pre-wrap">{project.designSubmissionNotes}</p>
+              <p className="text-brown-800 text-sm whitespace-pre-wrap">{project.designSubmissionNotes}</p>
             </div>
           )}
 
@@ -919,7 +919,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
           {project.buildSubmissionNotes && (
             <div className="bg-blue-100 border-2 border-blue-500/50 p-4 mb-6">
               <p className="text-blue-700 text-xs uppercase mb-2">Build Submission Notes from User</p>
-              <p className="text-cream-50 text-sm whitespace-pre-wrap">{project.buildSubmissionNotes}</p>
+              <p className="text-brown-800 text-sm whitespace-pre-wrap">{project.buildSubmissionNotes}</p>
             </div>
           )}
 
