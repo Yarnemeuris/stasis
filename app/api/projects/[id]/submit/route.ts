@@ -5,6 +5,19 @@ import { logAudit, AuditAction } from "@/lib/audit"
 import { headers } from "next/headers"
 import { sanitize } from "@/lib/sanitize"
 import { STARTER_PROJECTS } from "@/lib/starter-projects"
+import { runReviewChecks } from "@/lib/github-checks"
+
+async function cacheGithubChecks(submissionId: string, githubRepo: string | null) {
+  try {
+    const checks = await runReviewChecks(githubRepo)
+    await prisma.projectSubmission.update({
+      where: { id: submissionId },
+      data: { githubChecks: checks as object, githubChecksAt: new Date() },
+    })
+  } catch (err) {
+    console.error("Failed to cache GitHub checks for submission", submissionId, err)
+  }
+}
 
 // TODO: Add rate limiting - prevent submission spam
 export async function POST(
@@ -108,7 +121,7 @@ export async function POST(
       )
     }
 
-    const [updatedProject] = await prisma.$transaction([
+    const [updatedProject, , newSubmission] = await prisma.$transaction([
       prisma.project.update({
         where: { id },
         data: {
@@ -133,6 +146,8 @@ export async function POST(
         },
       }),
     ])
+
+    await cacheGithubChecks(newSubmission.id, project.githubRepo)
 
     await logAudit({
       action: AuditAction.USER_SUBMIT_PROJECT,
@@ -174,7 +189,7 @@ export async function POST(
       )
     }
 
-    const [updatedProject] = await prisma.$transaction([
+    const [updatedProject, , newSubmission] = await prisma.$transaction([
       prisma.project.update({
         where: { id },
         data: {
@@ -199,6 +214,8 @@ export async function POST(
         },
       }),
     ])
+
+    await cacheGithubChecks(newSubmission.id, project.githubRepo)
 
     await logAudit({
       action: AuditAction.USER_SUBMIT_PROJECT,

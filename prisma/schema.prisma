@@ -299,15 +299,17 @@ model HackatimeProject {
 }
 
 model ProjectSubmission {
-  id          String             @id @default(cuid())
-  projectId   String
-  project     Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  stage       ProjectStage
-  notes       String?
-  preReviewed Boolean            @default(false)
-  createdAt   DateTime           @default(now())
-  reviews     SubmissionReview[]
-  claim       ReviewClaim?
+  id             String             @id @default(cuid())
+  projectId      String
+  project        Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage          ProjectStage
+  notes          String?
+  preReviewed    Boolean            @default(false)
+  githubChecks   Json?
+  githubChecksAt DateTime?
+  createdAt      DateTime           @default(now())
+  reviews        SubmissionReview[]
+  claim          ReviewClaim?
 
   @@index([projectId])
   @@map("project_submission")

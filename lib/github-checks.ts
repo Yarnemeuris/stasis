@@ -232,3 +232,120 @@ export async function runPreflightChecks(
   const canSubmit = !checks.some((c) => c.blocking && c.status === 'fail');
   return { checks, canSubmit };
 }
+
+// --- Reviewer-facing checks (cached on ProjectSubmission) ---
+
+function reviewerFailChecks(reason: string): CheckResult[] {
+  return [
+    { key: 'checks_01_github_valid', label: 'GitHub repo valid', passed: false, detail: reason },
+    { key: 'checks_02_readme_exists', label: 'README exists', passed: false, detail: reason },
+    { key: 'checks_03_readme_has_photo', label: 'README has photo', passed: false, detail: reason },
+    { key: 'checks_05_3d_file', label: '3D model file', passed: false, detail: reason },
+    { key: 'checks_06_3d_source', label: '3D source file (F3D/STEP)', passed: false, detail: reason },
+    { key: 'checks_07_firmware_file', label: 'Firmware file', passed: false, detail: reason },
+    { key: 'checks_09_pcb_source', label: 'PCB source file', passed: false, detail: reason },
+    { key: 'checks_10_pcb_fab', label: 'PCB fabrication files', passed: false, detail: reason },
+  ];
+}
+
+export async function runReviewChecks(githubRepo: string | null): Promise<CheckResult[]> {
+  const parsed = githubRepo ? parseGitHubRepo(githubRepo) : null;
+  if (!parsed) {
+    return reviewerFailChecks(githubRepo ? 'Could not parse GitHub URL' : 'No GitHub repo URL');
+  }
+
+  const { owner, repo } = parsed;
+  const checks: CheckResult[] = [];
+
+  const repoRes = await ghFetch(`repos/${owner}/${repo}`);
+  const repoValid = repoRes.ok;
+  let repoDetail = `${owner}/${repo}`;
+  if (!repoValid) {
+    if (repoRes.status === 404) {
+      repoDetail = `Repository "${owner}/${repo}" not found - it may be private, deleted, or the URL is incorrect`;
+    } else if (repoRes.status === 403) {
+      repoDetail = `Access denied to "${owner}/${repo}" - rate limit may be exceeded or the repo requires authentication`;
+    } else if (repoRes.status >= 500) {
+      repoDetail = `GitHub API error (${repoRes.status}) - try again in a few minutes`;
+    } else {
+      repoDetail = `Could not access repo "${owner}/${repo}" (HTTP ${repoRes.status})`;
+    }
+  }
+  checks.push({ key: 'checks_01_github_valid', label: 'GitHub repo valid', passed: repoValid, detail: repoDetail });
+
+  if (!repoValid) {
+    const failDetail = repoRes.status === 404
+      ? 'Repo not found'
+      : repoRes.status === 403
+        ? 'Access denied'
+        : `GitHub unavailable (${repoRes.status})`;
+    checks.push({ key: 'checks_02_readme_exists', label: 'README exists', passed: false, detail: failDetail });
+    checks.push({ key: 'checks_03_readme_has_photo', label: 'README has photo', passed: false, detail: failDetail });
+    checks.push({ key: 'checks_05_3d_file', label: '3D model file', passed: false, detail: failDetail });
+    checks.push({ key: 'checks_06_3d_source', label: '3D source file (F3D/STEP)', passed: false, detail: failDetail });
+    checks.push({ key: 'checks_07_firmware_file', label: 'Firmware file', passed: false, detail: failDetail });
+    checks.push({ key: 'checks_09_pcb_source', label: 'PCB source file', passed: false, detail: failDetail });
+    checks.push({ key: 'checks_10_pcb_fab', label: 'PCB fabrication files', passed: false, detail: failDetail });
+    return checks;
+  }
+
+  const [tree, readmeContent] = await Promise.all([
+    getRepoTree(owner, repo),
+    getReadmeContent(owner, repo),
+  ]);
+
+  const filePaths = (tree || []).map((f) => f.path.toLowerCase());
+
+  const readmeExists = readmeContent !== null;
+  checks.push({ key: 'checks_02_readme_exists', label: 'README exists', passed: readmeExists });
+
+  const readmeHasPhoto = readmeExists && readmeContent ? IMAGE_PATTERN.test(readmeContent) : false;
+  checks.push({
+    key: 'checks_03_readme_has_photo',
+    label: 'README has photo',
+    passed: readmeHasPhoto,
+    detail: readmeHasPhoto ? undefined : readmeExists ? 'No images found in README' : 'No README',
+  });
+
+  const found3d = filePaths.filter((p) => THREE_D_EXTENSIONS.some((ext) => p.endsWith(ext)));
+  checks.push({
+    key: 'checks_05_3d_file',
+    label: '3D model file',
+    passed: found3d.length > 0,
+    detail: found3d.length > 0 ? found3d.slice(0, 3).join(', ') : 'No STL/OBJ/3MF files found',
+  });
+
+  const found3dSource = filePaths.filter((p) => THREE_D_SOURCE_EXTENSIONS.some((ext) => p.endsWith(ext)));
+  checks.push({
+    key: 'checks_06_3d_source',
+    label: '3D source file (F3D/STEP)',
+    passed: found3dSource.length > 0,
+    detail: found3dSource.length > 0 ? found3dSource.slice(0, 3).join(', ') : 'No F3D/STEP/SCAD files found',
+  });
+
+  const foundFirmware = filePaths.filter((p) => FIRMWARE_EXTENSIONS.some((ext) => p.endsWith(ext)));
+  checks.push({
+    key: 'checks_07_firmware_file',
+    label: 'Firmware file',
+    passed: foundFirmware.length > 0,
+    detail: foundFirmware.length > 0 ? `${foundFirmware.length} file(s)` : 'No firmware files found',
+  });
+
+  const foundPcbSource = filePaths.filter((p) => PCB_SOURCE_EXTENSIONS.some((ext) => p.endsWith(ext)));
+  checks.push({
+    key: 'checks_09_pcb_source',
+    label: 'PCB source file',
+    passed: foundPcbSource.length > 0,
+    detail: foundPcbSource.length > 0 ? foundPcbSource.slice(0, 3).join(', ') : 'No KiCad/Altium/Fritzing files found',
+  });
+
+  const foundPcbFab = filePaths.filter((p) => PCB_FAB_EXTENSIONS.some((ext) => p.endsWith(ext)));
+  checks.push({
+    key: 'checks_10_pcb_fab',
+    label: 'PCB fabrication files',
+    passed: foundPcbFab.length > 0,
+    detail: foundPcbFab.length > 0 ? `${foundPcbFab.length} file(s)` : 'No Gerber/drill files found',
+  });
+
+  return checks;
+}

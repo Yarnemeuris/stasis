@@ -2,22 +2,10 @@ import { NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/admin-auth';
 import { Permission } from '@/lib/permissions';
 import prisma from '@/lib/prisma';
-import {
-  type CheckResult,
-  parseGitHubRepo,
-  ghFetch,
-  getRepoTree,
-  getReadmeContent,
-  IMAGE_PATTERN,
-  THREE_D_EXTENSIONS,
-  THREE_D_SOURCE_EXTENSIONS,
-  FIRMWARE_EXTENSIONS,
-  PCB_SOURCE_EXTENSIONS,
-  PCB_FAB_EXTENSIONS,
-} from '@/lib/github-checks';
+import { type CheckResult, runReviewChecks } from '@/lib/github-checks';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -25,161 +13,67 @@ export async function GET(
     if ('error' in authCheck) return authCheck.error;
 
     const { id } = await params;
+    const refresh = new URL(request.url).searchParams.get('refresh') === '1';
 
-    // Try as project ID first (matches how the review route works), then submission ID
+    // Route param can be a project ID or a submission ID. Resolve both, plus
+    // locate the submission whose cached checks we should read/write.
     let githubRepo: string | null = null;
-    const project = await prisma.project.findUnique({
+    let submissionId: string | null = null;
+    let cachedChecks: CheckResult[] | null = null;
+    let cachedAt: Date | null = null;
+
+    const submission = await prisma.projectSubmission.findUnique({
       where: { id },
-      select: { githubRepo: true, deletedAt: true },
+      include: { project: { select: { githubRepo: true, deletedAt: true } } },
     });
 
-    if (project && !project.deletedAt) {
-      githubRepo = project.githubRepo;
-    } else if (project && project.deletedAt) {
-      return NextResponse.json({ error: 'Project not found - it may have been deleted' }, { status: 404 });
-    } else {
-      const submission = await prisma.projectSubmission.findUnique({
-        where: { id },
-        include: { project: { select: { githubRepo: true } } },
-      });
-      if (submission) {
-        githubRepo = submission.project.githubRepo;
-      } else {
+    if (submission) {
+      if (submission.project.deletedAt) {
         return NextResponse.json({ error: 'Project not found - it may have been deleted' }, { status: 404 });
       }
-    }
-    const checks: CheckResult[] = [];
+      submissionId = submission.id;
+      githubRepo = submission.project.githubRepo;
+      cachedChecks = (submission.githubChecks as CheckResult[] | null) ?? null;
+      cachedAt = submission.githubChecksAt;
+    } else {
+      const project = await prisma.project.findUnique({
+        where: { id },
+        select: { githubRepo: true, deletedAt: true },
+      });
+      if (!project) {
+        return NextResponse.json({ error: 'Project not found - it may have been deleted' }, { status: 404 });
+      }
+      if (project.deletedAt) {
+        return NextResponse.json({ error: 'Project not found - it may have been deleted' }, { status: 404 });
+      }
+      githubRepo = project.githubRepo;
 
-    const allFailedChecks = (reason: string) => {
-      checks.push({ key: 'checks_01_github_valid', label: 'GitHub repo valid', passed: false, detail: reason });
-      checks.push({ key: 'checks_02_readme_exists', label: 'README exists', passed: false, detail: reason });
-      checks.push({ key: 'checks_03_readme_has_photo', label: 'README has photo', passed: false, detail: reason });
-      checks.push({ key: 'checks_05_3d_file', label: '3D model file', passed: false, detail: reason });
-      checks.push({ key: 'checks_06_3d_source', label: '3D source file (F3D/STEP)', passed: false, detail: reason });
-      checks.push({ key: 'checks_07_firmware_file', label: 'Firmware file', passed: false, detail: reason });
-      checks.push({ key: 'checks_09_pcb_source', label: 'PCB source file', passed: false, detail: reason });
-      checks.push({ key: 'checks_10_pcb_fab', label: 'PCB fabrication files', passed: false, detail: reason });
-    };
-
-    // Check 1: GitHub URL is valid and repo exists
-    const parsed = githubRepo ? parseGitHubRepo(githubRepo) : null;
-    if (!parsed) {
-      allFailedChecks(githubRepo ? 'Could not parse GitHub URL' : 'No GitHub repo URL');
-      return NextResponse.json({ checks });
-    }
-
-    const { owner, repo } = parsed;
-
-    // Validate repo exists
-    const repoRes = await ghFetch(`repos/${owner}/${repo}`);
-    const repoValid = repoRes.ok;
-    let repoDetail = `${owner}/${repo}`;
-    if (!repoValid) {
-      if (repoRes.status === 404) {
-        repoDetail = `Repository "${owner}/${repo}" not found - it may be private, deleted, or the URL is incorrect`;
-      } else if (repoRes.status === 403) {
-        repoDetail = `Access denied to "${owner}/${repo}" - rate limit may be exceeded or the repo requires authentication`;
-      } else if (repoRes.status >= 500) {
-        repoDetail = `GitHub API error (${repoRes.status}) - try again in a few minutes`;
-      } else {
-        repoDetail = `Could not access repo "${owner}/${repo}" (HTTP ${repoRes.status})`;
+      // Pick the most recent submission for this project to read/write cache.
+      const latestSubmission = await prisma.projectSubmission.findFirst({
+        where: { projectId: id },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, githubChecks: true, githubChecksAt: true },
+      });
+      if (latestSubmission) {
+        submissionId = latestSubmission.id;
+        cachedChecks = (latestSubmission.githubChecks as CheckResult[] | null) ?? null;
+        cachedAt = latestSubmission.githubChecksAt;
       }
     }
-    checks.push({
-      key: 'checks_01_github_valid',
-      label: 'GitHub repo valid',
-      passed: repoValid,
-      detail: repoDetail,
-    });
 
-    if (!repoValid) {
-      const failDetail = repoRes.status === 404
-        ? 'Repo not found'
-        : repoRes.status === 403
-          ? 'Access denied'
-          : `GitHub unavailable (${repoRes.status})`;
-      checks.push({ key: 'checks_02_readme_exists', label: 'README exists', passed: false, detail: failDetail });
-      checks.push({ key: 'checks_03_readme_has_photo', label: 'README has photo', passed: false, detail: failDetail });
-      checks.push({ key: 'checks_05_3d_file', label: '3D model file', passed: false, detail: failDetail });
-      checks.push({ key: 'checks_06_3d_source', label: '3D source file (F3D/STEP)', passed: false, detail: failDetail });
-      checks.push({ key: 'checks_07_firmware_file', label: 'Firmware file', passed: false, detail: failDetail });
-      checks.push({ key: 'checks_09_pcb_source', label: 'PCB source file', passed: false, detail: failDetail });
-      checks.push({ key: 'checks_10_pcb_fab', label: 'PCB fabrication files', passed: false, detail: failDetail });
-      return NextResponse.json({ checks });
+    if (!refresh && cachedChecks) {
+      return NextResponse.json({ checks: cachedChecks, checkedAt: cachedAt, cached: true });
     }
 
-    // Get file tree and README in parallel
-    const [tree, readmeContent] = await Promise.all([
-      getRepoTree(owner, repo),
-      getReadmeContent(owner, repo),
-    ]);
-
-    const files = tree || [];
-    const filePaths = files.map((f) => f.path.toLowerCase());
-
-    // Check 2: README exists
-    const readmeExists = readmeContent !== null;
-    checks.push({
-      key: 'checks_02_readme_exists',
-      label: 'README exists',
-      passed: readmeExists,
-    });
-
-    // Check 3: README has photo/image
-    const readmeHasPhoto = readmeExists && readmeContent ? IMAGE_PATTERN.test(readmeContent) : false;
-    checks.push({
-      key: 'checks_03_readme_has_photo',
-      label: 'README has photo',
-      passed: readmeHasPhoto,
-      detail: readmeHasPhoto ? undefined : readmeExists ? 'No images found in README' : 'No README',
-    });
-
-    // Check 5: 3D model files
-    const found3d = filePaths.filter((p) => THREE_D_EXTENSIONS.some((ext) => p.endsWith(ext)));
-    checks.push({
-      key: 'checks_05_3d_file',
-      label: '3D model file',
-      passed: found3d.length > 0,
-      detail: found3d.length > 0 ? found3d.slice(0, 3).join(', ') : 'No STL/OBJ/3MF files found',
-    });
-
-    // Check 6: 3D source files (F3D, STEP)
-    const found3dSource = filePaths.filter((p) => THREE_D_SOURCE_EXTENSIONS.some((ext) => p.endsWith(ext)));
-    checks.push({
-      key: 'checks_06_3d_source',
-      label: '3D source file (F3D/STEP)',
-      passed: found3dSource.length > 0,
-      detail: found3dSource.length > 0 ? found3dSource.slice(0, 3).join(', ') : 'No F3D/STEP/SCAD files found',
-    });
-
-    // Check 7: Firmware files
-    const foundFirmware = filePaths.filter((p) => FIRMWARE_EXTENSIONS.some((ext) => p.endsWith(ext)));
-    checks.push({
-      key: 'checks_07_firmware_file',
-      label: 'Firmware file',
-      passed: foundFirmware.length > 0,
-      detail: foundFirmware.length > 0 ? `${foundFirmware.length} file(s)` : 'No firmware files found',
-    });
-
-    // Check 9: PCB source files (KiCad, Altium, Fritzing)
-    const foundPcbSource = filePaths.filter((p) => PCB_SOURCE_EXTENSIONS.some((ext) => p.endsWith(ext)));
-    checks.push({
-      key: 'checks_09_pcb_source',
-      label: 'PCB source file',
-      passed: foundPcbSource.length > 0,
-      detail: foundPcbSource.length > 0 ? foundPcbSource.slice(0, 3).join(', ') : 'No KiCad/Altium/Fritzing files found',
-    });
-
-    // Check 10: PCB fabrication files (Gerbers, drill files)
-    const foundPcbFab = filePaths.filter((p) => PCB_FAB_EXTENSIONS.some((ext) => p.endsWith(ext)));
-    checks.push({
-      key: 'checks_10_pcb_fab',
-      label: 'PCB fabrication files',
-      passed: foundPcbFab.length > 0,
-      detail: foundPcbFab.length > 0 ? `${foundPcbFab.length} file(s)` : 'No Gerber/drill files found',
-    });
-
-    return NextResponse.json({ checks });
+    const checks = await runReviewChecks(githubRepo);
+    const checkedAt = new Date();
+    if (submissionId) {
+      await prisma.projectSubmission.update({
+        where: { id: submissionId },
+        data: { githubChecks: checks as object, githubChecksAt: checkedAt },
+      }).catch((err) => console.error('Failed to persist refreshed GitHub checks:', err));
+    }
+    return NextResponse.json({ checks, checkedAt, cached: false });
   } catch (err) {
     console.error('GitHub checks error:', err);
     const message = err instanceof TypeError && String(err).includes('fetch')

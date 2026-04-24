@@ -56,6 +56,7 @@ interface ReviewData {
       maxWorkUnits: number;
       minWorkUnits: number;
       bomCost: number;
+      requestedAmount: number | null;
       bomTax: number | null;
       bomShipping: number | null;
       costPerHour: number | null;
@@ -194,6 +195,8 @@ export default function ReviewDetailPage() {
   const [ghChecks, setGhChecks] = useState<Array<{ key: string; label: string; passed: boolean; detail?: string }> | null>(null);
   const [ghChecksLoading, setGhChecksLoading] = useState(false);
   const [ghChecksError, setGhChecksError] = useState<string | null>(null);
+  const [ghChecksAt, setGhChecksAt] = useState<string | null>(null);
+  const [ghChecksCached, setGhChecksCached] = useState(false);
   const [kicadFiles, setKicadFiles] = useState<KiCadFilesResponse | null>(null);
   const [expandedKicad, setExpandedKicad] = useState<Set<number>>(new Set());
 
@@ -279,22 +282,29 @@ export default function ReviewDetailPage() {
   }, [submitting, data, feedback, reason, workUnitsOverride, tierOverride, grantOverride, additionalBitsDeduction, categoryOverride]);
 
   // Fetch GitHub checks when submission loads
-  useEffect(() => {
-    if (!data?.submission.id) return;
+  const loadGhChecks = useCallback((opts?: { refresh?: boolean }) => {
     setGhChecksLoading(true);
     setGhChecksError(null);
-    fetch(`/api/reviews/${id}/checks`)
+    const url = `/api/reviews/${id}/checks${opts?.refresh ? '?refresh=1' : ''}`;
+    fetch(url)
       .then(async (res) => {
         const d = await res.json();
         if (res.ok && d.checks) {
           setGhChecks(d.checks);
+          setGhChecksAt(d.checkedAt ?? null);
+          setGhChecksCached(Boolean(d.cached));
         } else {
           setGhChecksError(d.error || d.detail || `HTTP ${res.status}`);
         }
       })
       .catch((err) => setGhChecksError(String(err)))
       .finally(() => setGhChecksLoading(false));
-  }, [data?.submission.id, id]);
+  }, [id]);
+
+  useEffect(() => {
+    if (!data?.submission.id) return;
+    loadGhChecks();
+  }, [data?.submission.id, loadGhChecks]);
 
   // Look up KiCad files in the linked GitHub repo so we can embed KiCanvas
   // viewers on the review screen. Silently no-ops if the repo has none.
@@ -768,8 +778,24 @@ export default function ReviewDetailPage() {
 
       {/* ── GitHub Checks Card ── */}
       <div className="bg-brown-800 border border-cream-500/20 rounded p-6">
-        <h2 className="text-cream-50 text-sm uppercase tracking-wider mb-4">GitHub Repo Checks</h2>
-        {ghChecksLoading ? (
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <h2 className="text-cream-50 text-sm uppercase tracking-wider">GitHub Repo Checks</h2>
+          <div className="flex items-center gap-3 text-xs text-cream-200">
+            {ghChecksAt && (
+              <span>
+                {ghChecksCached ? 'cached' : 'fresh'} · {new Date(ghChecksAt).toLocaleString()}
+              </span>
+            )}
+            <button
+              onClick={() => loadGhChecks({ refresh: true })}
+              disabled={ghChecksLoading}
+              className="underline hover:text-cream-50 disabled:opacity-50"
+            >
+              {ghChecksLoading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+        {ghChecksLoading && !ghChecks ? (
           <p className="text-cream-200 text-sm">Running checks...</p>
         ) : ghChecks ? (
           <div className="space-y-2">
@@ -789,18 +815,7 @@ export default function ReviewDetailPage() {
           <div className="text-sm">
             <p className="text-red-500">{ghChecksError}</p>
             <button
-              onClick={() => {
-                setGhChecksLoading(true);
-                setGhChecksError(null);
-                fetch(`/api/reviews/${id}/checks`)
-                  .then(async (res) => {
-                    const d = await res.json();
-                    if (res.ok && d.checks) setGhChecks(d.checks);
-                    else setGhChecksError(d.error || d.detail || `HTTP ${res.status}`);
-                  })
-                  .catch((err) => setGhChecksError(String(err)))
-                  .finally(() => setGhChecksLoading(false));
-              }}
+              onClick={() => loadGhChecks({ refresh: true })}
               className="mt-2 text-xs text-cream-200 underline hover:text-cream-50"
             >
               Retry checks
@@ -1071,7 +1086,7 @@ export default function ReviewDetailPage() {
       {/* ── Supporting Evidence Card ── */}
       <div className="bg-brown-800 border border-cream-500/20 rounded p-6">
         <h2 className="text-cream-50 text-sm uppercase tracking-wider mb-4">Supporting Evidence</h2>
-        <div className="flex gap-6 text-sm mb-3">
+        <div className="flex gap-6 text-sm mb-3 flex-wrap">
           <p className="text-cream-50">
             BOM Cost: <span className="font-medium">${project.bomCost.toFixed(2)}</span>
             {((project.bomTax ?? 0) > 0 || (project.bomShipping ?? 0) > 0) && (
@@ -1080,6 +1095,14 @@ export default function ReviewDetailPage() {
                 {(project.bomTax ?? 0) > 0 && (project.bomShipping ?? 0) > 0 && ' + '}
                 {(project.bomShipping ?? 0) > 0 && `$${(project.bomShipping ?? 0).toFixed(2)} shipping`})
               </span>
+            )}
+          </p>
+          <p className="text-cream-50">
+            User Requested: <span className="font-medium text-orange-500">
+              {project.requestedAmount !== null ? `$${project.requestedAmount.toFixed(2)}` : '—'}
+            </span>
+            {project.requestedAmount !== null && Math.ceil(project.requestedAmount) !== Math.ceil(project.bomCost) && (
+              <span className="text-cream-200 text-xs ml-1">(≠ BOM total — use this as the default grant)</span>
             )}
           </p>
           <p className="text-cream-50">
@@ -1210,7 +1233,18 @@ export default function ReviewDetailPage() {
                   type="number"
                   value={grantOverride}
                   onChange={(e) => setGrantOverride(e.target.value)}
-                  placeholder={`Default: ${project.bomCost > 0 ? `BOM cost rounded up = ${Math.ceil(project.bomCost)} bits` : 'No BOM cost'}`}
+                  placeholder={(() => {
+                    if (project.bomCost <= 0) return 'Default: No BOM cost'
+                    const effectiveTier = tierOverride ? parseInt(tierOverride) : project.tier
+                    const tierMax = effectiveTier ? Math.floor((TIERS.find(t => t.id === effectiveTier)?.bits ?? 0) * 0.5) : Infinity
+                    const base = project.requestedAmount ?? project.bomCost
+                    const capped = Math.min(base, project.bomCost, tierMax)
+                    const defaultBits = Math.ceil(capped)
+                    const source = project.requestedAmount != null
+                      ? (project.requestedAmount > project.bomCost || project.requestedAmount > tierMax ? 'user request, capped' : 'user request')
+                      : 'BOM cost, legacy'
+                    return `Default: ${defaultBits} bits (${source})`
+                  })()}
                   className="w-full px-3 py-1.5 text-sm border border-cream-500/20 bg-brown-900 text-cream-50 focus:outline-none focus:border-orange-500"
                 />
                 {grantOverride && (
