@@ -126,6 +126,7 @@ export default function AdminUsersPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [purchasesModal, setPurchasesModal] = useState<{ user: AdminUser; purchases: UserPurchase[] } | null>(null);
   const [loadingPurchases, setLoadingPurchases] = useState<string | null>(null);
+  const [grantingInvite, setGrantingInvite] = useState<string | null>(null);
 
   const openPurchasesModal = useCallback(async (user: AdminUser) => {
     setLoadingPurchases(user.id);
@@ -214,6 +215,30 @@ export default function AdminUsersPage() {
       console.error('Failed to backfill invite side effects:', error);
     } finally {
       setBackfillingInvites(false);
+    }
+  }
+
+  async function grantInvite(user: AdminUser) {
+    if (!confirm(`Grant a Stasis Event Invite to ${user.name || user.email}? This will register them on Attend and send the confirmation email.`)) {
+      return;
+    }
+    setGrantingInvite(user.id);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/grant-invite`, { method: 'POST' });
+      if (res.ok) {
+        setData(prev => prev ? {
+          ...prev,
+          items: prev.items.map(u => u.id === user.id ? { ...u, hasEventInvite: true } : u),
+        } : prev);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        alert(`Failed to grant invite: ${body.error || res.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to grant invite:', error);
+      alert('Failed to grant invite');
+    } finally {
+      setGrantingInvite(null);
     }
   }
 
@@ -733,9 +758,23 @@ export default function AdminUsersPage() {
                         </div>
                         <div>
                           <p className="text-cream-200 uppercase text-xs mb-1">Event Invite</p>
-                          <p className={user.hasEventInvite ? 'text-green-600' : 'text-cream-50'}>
-                            {user.hasEventInvite ? 'Purchased ✓' : 'No'}
-                          </p>
+                          {user.hasEventInvite ? (
+                            <p className="text-green-600">Purchased ✓</p>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <p className="text-cream-50">No</p>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  grantInvite(user);
+                                }}
+                                disabled={grantingInvite === user.id}
+                                className="px-2 py-1 text-[10px] uppercase bg-orange-500 text-cream-50 hover:bg-orange-400 transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                {grantingInvite === user.id ? 'Granting...' : 'Grant'}
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <div>
                           <p className="text-cream-200 uppercase text-xs mb-1">Flight Stipend</p>
