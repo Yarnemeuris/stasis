@@ -749,9 +749,19 @@ export default function ReviewDetailPage() {
 
       {/* ── Internal Notes Card ── */}
       <div className="bg-cream-100 border-2 border-cream-400 p-6">
-        <h2 className="text-brown-800 text-sm uppercase tracking-wider mb-2">
-          Internal Notes <span className="text-cream-600 normal-case">(about this author, shared across reviewers)</span>
-        </h2>
+        <div className="flex items-baseline justify-between gap-3 mb-2">
+          <h2 className="text-brown-800 text-sm uppercase tracking-wider">
+            Internal Notes <span className="text-cream-600 normal-case">(about this author, shared across reviewers)</span>
+          </h2>
+          <Link
+            href={`/reviews/authors/${data.submission.project.user.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-500 hover:text-orange-600 text-xs uppercase tracking-wider whitespace-nowrap transition-colors"
+          >
+            Open standalone →
+          </Link>
+        </div>
         <textarea
           value={internalNote}
           onChange={(e) => handleNoteChange(e.target.value)}

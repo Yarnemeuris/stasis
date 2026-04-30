@@ -1536,9 +1536,19 @@ export default function ReviewDetailPage() {
 
       {/* ── Internal Notes Card ── */}
       <div className="bg-brown-800 border border-cream-500/20 rounded p-6">
-        <h2 className="text-cream-50 text-sm uppercase tracking-wider mb-2">
-          Internal Notes <span className="text-cream-200 normal-case">(about this author, shared across reviewers)</span>
-        </h2>
+        <div className="flex items-baseline justify-between gap-3 mb-2">
+          <h2 className="text-cream-50 text-sm uppercase tracking-wider">
+            Internal Notes <span className="text-cream-200 normal-case">(about this author, shared across reviewers)</span>
+          </h2>
+          <Link
+            href={`/reviews/authors/${project.user.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-400 hover:text-orange-300 text-xs uppercase tracking-wider whitespace-nowrap transition-colors"
+          >
+            Open standalone →
+          </Link>
+        </div>
         <textarea
           ref={internalNoteRef}
           value={internalNote}

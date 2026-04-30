@@ -41,31 +41,39 @@ export default function ReviewsLayout({
       <div className="min-h-screen bg-[linear-gradient(#DAD2BF99,#DAD2BF99),url(/noise-smooth.png)] font-mono relative overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between border-b border-cream-400">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-brown-800 hover:text-orange-500 transition-colors">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              </svg>
-            </Link>
-            <Link href="/reviews" className="text-orange-500 text-xl uppercase tracking-wide hover:text-orange-600 transition-colors">
-              Review Queue
-            </Link>
+          <div className="flex items-center gap-10">
+            <div className="flex items-center gap-4">
+              <Link href="/dashboard" className="text-brown-800 hover:text-orange-500 transition-colors">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                </svg>
+              </Link>
+              <Link href="/reviews" className="text-orange-500 text-xl uppercase tracking-wide hover:text-orange-600 hover:underline underline-offset-4 transition-colors">
+                Review Queue
+              </Link>
+            </div>
             {isAdmin && (
               <Link
                 href="/admin"
-                className="text-brown-800 hover:text-orange-500 text-sm uppercase tracking-wider transition-colors"
+                className="text-brown-800 hover:text-orange-500 hover:underline underline-offset-4 text-sm uppercase tracking-wider transition-colors"
               >
                 Admin
               </Link>
             )}
+            <Link
+              href="/reviews/authors"
+              className="text-brown-800 hover:text-orange-500 hover:underline underline-offset-4 text-sm uppercase tracking-wider transition-colors"
+            >
+              Author Search
+            </Link>
           </div>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">

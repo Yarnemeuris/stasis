@@ -600,14 +600,18 @@ export default function ReviewQueuePage() {
                         </div>
                       </td>
                       <td className="px-3 py-3 hidden lg:table-cell">
-                        <div className="flex items-center gap-2">
+                        <Link
+                          href={`/reviews/authors/${item.author.id}`}
+                          className="flex items-center gap-2 group"
+                          title="Open author notes"
+                        >
                           {item.author.image && (
                             <img src={item.author.image} alt="" className="w-5 h-5 rounded-full" />
                           )}
-                          <span className="text-sm text-cream-100 truncate max-w-[120px]">
+                          <span className="text-sm text-cream-100 group-hover:text-orange-400 transition-colors truncate max-w-[120px]">
                             {item.author.name || item.author.email}
                           </span>
-                        </div>
+                        </Link>
                       </td>
                       <td className="px-3 py-3 hidden md:table-cell">
                         {tierInfo && (
