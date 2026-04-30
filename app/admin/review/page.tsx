@@ -7,6 +7,7 @@ import { getTierById } from '@/lib/tiers';
 import { projects as starterProjects } from '@/app/starter-projects/projects';
 import { useHotkeys, type HotkeyBinding } from '@/lib/hotkeys';
 import HotkeyOverlay from '@/app/components/HotkeyOverlay';
+import { useToast } from '@/app/components/Toast';
 
 interface ReviewAuthor {
   id: string;
@@ -101,6 +102,7 @@ type StatsTab = 'weekly' | 'allTime' | 'fudgeHoodie';
 
 export default function ReviewQueuePage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<ReviewTab>('DESIGN');
   const [designData, setDesignData] = useState<QueueResponse | null>(null);
   const [buildData, setBuildData] = useState<QueueResponse | null>(null);
@@ -149,9 +151,9 @@ export default function ReviewQueuePage() {
           return;
         }
       }
-      alert('No submissions match that filter.');
+      showToast('No submissions match that filter', { variant: 'warn' });
     } catch {
-      alert('Failed to load review queue.');
+      showToast('Failed to load review queue', { variant: 'error' });
     } finally {
       setNavigating(false);
     }

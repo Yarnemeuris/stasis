@@ -103,6 +103,8 @@ export default function ReviewDetailPage() {
   // Form state
   const [feedback, setFeedback] = useState('');
   const [reason, setReason] = useState('');
+  const [feedbackError, setFeedbackError] = useState(false);
+  const [reasonError, setReasonError] = useState(false);
   const [workUnitsOverride, setWorkUnitsOverride] = useState('');
   const [tierOverride, setTierOverride] = useState('');
   const [grantOverride, setGrantOverride] = useState('');
@@ -173,15 +175,16 @@ export default function ReviewDetailPage() {
   }
 
   async function submitReview(result: string) {
+    let invalid = false;
     if (!feedback.trim()) {
-      alert('Feedback for submitter is required.');
-      return;
+      setFeedbackError(true);
+      invalid = true;
     }
-
     if (result === 'APPROVED' && data?.isAdmin && !reason.trim()) {
-      alert('Internal justification is required.');
-      return;
+      setReasonError(true);
+      invalid = true;
     }
+    if (invalid) return;
 
     if ((result === 'APPROVED' || result === 'REJECTED') && !confirm(`Are you sure you want to ${result.toLowerCase()} this submission?`)) {
       return;
@@ -838,10 +841,13 @@ export default function ReviewDetailPage() {
                 <label className="text-cream-600 text-xs uppercase block mb-1">Internal Justification (required for approval)</label>
                 <textarea
                   value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full h-20 px-3 py-2 text-sm border border-cream-400 bg-cream-50 text-brown-800 focus:outline-none focus:border-orange-500 resize-y"
+                  onChange={(e) => { setReason(e.target.value); if (reasonError) setReasonError(false); }}
+                  className={`w-full h-20 px-3 py-2 text-sm border bg-cream-50 text-brown-800 focus:outline-none resize-y ${reasonError ? 'border-red-500 focus:border-red-500' : 'border-cream-400 focus:border-orange-500'}`}
                   placeholder="Internal reason for your decision (not shown to submitter)..."
                 />
+                {reasonError && (
+                  <p className="text-red-600 text-xs uppercase tracking-wide mt-1">Required to approve</p>
+                )}
               </div>
             )}
 
@@ -851,11 +857,14 @@ export default function ReviewDetailPage() {
               </label>
               <textarea
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                className="w-full h-24 px-3 py-2 text-sm border border-cream-400 bg-cream-50 text-brown-800 focus:outline-none focus:border-orange-500 resize-y"
+                onChange={(e) => { setFeedback(e.target.value); if (feedbackError) setFeedbackError(false); }}
+                className={`w-full h-24 px-3 py-2 text-sm border bg-cream-50 text-brown-800 focus:outline-none resize-y ${feedbackError ? 'border-red-500 focus:border-red-500' : 'border-cream-400 focus:border-orange-500'}`}
                 placeholder="Feedback visible to the submitter..."
                 required
               />
+              {feedbackError && (
+                <p className="text-red-600 text-xs uppercase tracking-wide mt-1">Feedback is required</p>
+              )}
             </div>
 
             {project.user.fraudConvicted && (

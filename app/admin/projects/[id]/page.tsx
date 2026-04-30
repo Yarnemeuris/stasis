@@ -17,6 +17,8 @@ import { fixMarkdownImages } from '@/lib/markdown';
 import { getBadgeImage } from "@/lib/badges";
 import { formatPrice, bomItemTotal } from "@/lib/format";
 import { UnapproveProjectModal } from "@/app/components/admin/UnapproveProjectModal";
+import { ConfirmModal } from "@/app/components/ConfirmModal";
+import { useToast } from "@/app/components/Toast";
 
 type BadgeType = 
   | "I2C" | "SPI" | "WIFI" | "BLUETOOTH" | "OTHER_RF"
@@ -174,8 +176,11 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
   const [hackatimeReviews, setHackatimeReviews] = useState<Record<string, { hoursApproved: number; isReviewed: boolean }>>({});
   const [reviewingHackatime, setReviewingHackatime] = useState<string | null>(null);
   const [editGrantAmount, setEditGrantAmount] = useState('');
+  const [editGrantError, setEditGrantError] = useState<string | null>(null);
   const [editingGrant, setEditingGrant] = useState(false);
   const [savingGrant, setSavingGrant] = useState(false);
+  const [partialErrorsModal, setPartialErrorsModal] = useState<{ title: string; errors: string[]; footer?: string } | null>(null);
+  const { showToast } = useToast();
   const [showFraudWarning, setShowFraudWarning] = useState(true);
   const [flaggingFraud, setFlaggingFraud] = useState(false);
   const [ghChecks, setGhChecks] = useState<Array<{ key: string; label: string; passed: boolean; detail?: string }> | null>(null);
@@ -299,7 +304,11 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
   const handleUnapproveSuccess = (data: { partialFailures?: string[] } & Record<string, unknown>) => {
     setProject(prev => prev ? { ...prev, ...data } : prev);
     if (Array.isArray(data.partialFailures) && data.partialFailures.length > 0) {
-      alert(`Un-approve completed, but some cleanup steps failed:\n\n${data.partialFailures.join('\n')}\n\nSee the audit log for full details.`);
+      setPartialErrorsModal({
+        title: 'Un-approve completed with errors',
+        errors: data.partialFailures,
+        footer: 'See the audit log for full details.',
+      });
     }
   };
 
@@ -311,7 +320,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
         method: 'POST',
       });
       if (res.ok) {
-        alert('Synced to Airtable successfully');
+        showToast('Synced to Airtable', { variant: 'success' });
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to sync to Airtable');
@@ -388,9 +397,10 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
     if (!project) return;
     const amount = parseFloat(editGrantAmount);
     if (isNaN(amount) || amount < 0) {
-      alert('Grant amount must be a non-negative number');
+      setEditGrantError('Must be a non-negative number');
       return;
     }
+    setEditGrantError(null);
     if (!confirm(`Update BOM grant to $${amount.toFixed(2)}?`)) return;
     setSavingGrant(true);
     try {
@@ -417,7 +427,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
         } catch {
           // ignore — grant was saved, Airtable sync is best-effort
         }
-        alert('Grant amount updated and synced to Airtable');
+        showToast('Grant updated & synced to Airtable', { variant: 'success' });
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to update grant amount');
@@ -1407,30 +1417,35 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
               <div className="bg-brown-800 border-2 border-cream-500/20 p-4 mb-6">
                 <p className="text-cream-50 text-xs uppercase mb-2">BOM Grant (Design Approval)</p>
                 {editingGrant ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-cream-50 text-sm">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editGrantAmount}
-                      onChange={(e) => setEditGrantAmount(e.target.value)}
-                      className="w-32 bg-brown-800 border border-cream-500/20 text-cream-50 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
-                    />
-                    <button
-                      onClick={handleUpdateGrant}
-                      disabled={savingGrant}
-                      className="bg-green-600 hover:bg-green-500 text-white px-3 py-2 text-sm uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      {savingGrant ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => setEditingGrant(false)}
-                      disabled={savingGrant}
-                      className="text-cream-200 hover:text-cream-50 px-3 py-2 text-sm uppercase tracking-wider cursor-pointer disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-cream-50 text-sm">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editGrantAmount}
+                        onChange={(e) => { setEditGrantAmount(e.target.value); if (editGrantError) setEditGrantError(null); }}
+                        className={`w-32 bg-brown-800 border text-cream-50 px-3 py-2 text-sm focus:outline-none ${editGrantError ? 'border-red-500 focus:border-red-500' : 'border-cream-500/20 focus:border-orange-500'}`}
+                      />
+                      <button
+                        onClick={handleUpdateGrant}
+                        disabled={savingGrant}
+                        className="bg-green-600 hover:bg-green-500 text-white px-3 py-2 text-sm uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {savingGrant ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => { setEditingGrant(false); setEditGrantError(null); }}
+                        disabled={savingGrant}
+                        className="text-cream-200 hover:text-cream-50 px-3 py-2 text-sm uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {editGrantError && (
+                      <p className="text-red-500 text-xs mt-2 uppercase tracking-wide">{editGrantError}</p>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -1440,6 +1455,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
                     <button
                       onClick={() => {
                         setEditGrantAmount((designAction.grantAmount ?? 0).toString());
+                        setEditGrantError(null);
                         setEditingGrant(true);
                       }}
                       className="text-orange-500 text-xs hover:underline cursor-pointer"
@@ -1466,6 +1482,28 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
         projectId={projectId}
         onClose={() => setUnapproveStage(null)}
         onSuccess={handleUnapproveSuccess}
+      />
+
+      <ConfirmModal
+        isOpen={!!partialErrorsModal}
+        title={partialErrorsModal?.title ?? ''}
+        variant="error"
+        singleButton
+        confirmLabel="OK"
+        message={
+          <div className="space-y-3">
+            <ul className="list-disc list-inside space-y-1">
+              {partialErrorsModal?.errors.map((err, i) => (
+                <li key={i} className="break-words">{err}</li>
+              ))}
+            </ul>
+            {partialErrorsModal?.footer && (
+              <p className="text-cream-200 text-xs uppercase tracking-wide">{partialErrorsModal.footer}</p>
+            )}
+          </div>
+        }
+        onConfirm={() => setPartialErrorsModal(null)}
+        onCancel={() => setPartialErrorsModal(null)}
       />
     </>
   );

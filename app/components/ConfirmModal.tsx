@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 interface Props {
   isOpen: boolean
   title: string
-  message: string
+  message: ReactNode
   confirmLabel?: string
   cancelLabel?: string
-  variant?: 'warning' | 'danger'
+  variant?: 'warning' | 'danger' | 'info' | 'error'
+  singleButton?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -22,18 +23,28 @@ const VARIANTS = {
     title: 'text-red-500',
     button: 'border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500/20',
   },
+  info: {
+    title: 'text-orange-500',
+    button: 'border-orange-500 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20',
+  },
+  error: {
+    title: 'text-red-500',
+    button: 'border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500/20',
+  },
 } as const
 
 export function ConfirmModal({
   isOpen,
   title,
   message,
-  confirmLabel = 'Confirm',
+  confirmLabel,
   cancelLabel = 'Cancel',
   variant = 'warning',
+  singleButton = false,
   onConfirm,
   onCancel,
 }: Readonly<Props>) {
+  const resolvedConfirmLabel = confirmLabel ?? (singleButton ? 'OK' : 'Confirm')
   useEffect(() => {
     if (!isOpen) return
     const handleKey = (e: KeyboardEvent) => {
@@ -67,7 +78,11 @@ export function ConfirmModal({
         </div>
 
         <div className="p-4 space-y-4">
-          <p className="text-cream-50 text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
+          {typeof message === 'string' ? (
+            <p className="text-cream-50 text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
+          ) : (
+            <div className="text-cream-50 text-sm leading-relaxed">{message}</div>
+          )}
 
           <div className="flex gap-2 pt-2">
             <button
@@ -75,16 +90,18 @@ export function ConfirmModal({
               autoFocus
               className={`px-4 py-2 text-sm uppercase tracking-wider border transition-colors cursor-pointer ${styles.button}`}
             >
-              {confirmLabel}
+              {resolvedConfirmLabel}
               <span className="ml-2 text-xs opacity-60 hidden sm:inline">Enter</span>
             </button>
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 text-sm uppercase tracking-wider border border-cream-500/20 bg-brown-900 text-cream-50 hover:bg-cream-500/10 cursor-pointer"
-            >
-              {cancelLabel}
-              <span className="ml-2 text-xs opacity-60 hidden sm:inline">Esc</span>
-            </button>
+            {!singleButton && (
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 text-sm uppercase tracking-wider border border-cream-500/20 bg-brown-900 text-cream-50 hover:bg-cream-500/10 cursor-pointer"
+              >
+                {cancelLabel}
+                <span className="ml-2 text-xs opacity-60 hidden sm:inline">Esc</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

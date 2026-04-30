@@ -17,6 +17,8 @@ import { STARTER_PROJECTS } from "@/lib/starter-projects";
 import { BomCsvImportModal } from '@/app/components/projects/BomCsvImportModal';
 import PreflightChecks from '@/app/components/projects/PreflightChecks';
 import type { PreflightCheck } from '@/app/components/projects/PreflightChecks';
+import { ConfirmModal } from '@/app/components/ConfirmModal';
+import { useToast } from '@/app/components/Toast';
 
 type ProjectStatus = "draft" | "in_review" | "approved" | "rejected" | "update_requested";
 
@@ -206,6 +208,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [deleting, setDeleting] = useState(false);
   const [importingJournal, setImportingJournal] = useState(false);
   const [importErrorMessage, setImportErrorMessage] = useState<string | null>(null);
+  const [partialErrorsModal, setPartialErrorsModal] = useState<{ title: string; errors: string[] } | null>(null);
+  const { showToast } = useToast();
 
   const canEdit = project && project.designStatus !== "in_review" && project.buildStatus !== "in_review";
 
@@ -323,7 +327,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Imported ${data.imported} journal ${data.imported === 1 ? 'entry' : 'entries'}`);
+        showToast(`Imported ${data.imported} journal ${data.imported === 1 ? 'entry' : 'entries'}`, { variant: 'success' });
         const [updatedRes, timelineRes] = await Promise.all([
           fetch(`/api/projects/${projectId}`),
           fetch(`/api/projects/${projectId}/timeline`),
@@ -984,7 +988,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       }
 
       if (errors.length > 0) {
-        alert(`Some uploads failed:\n${errors.join('\n')}`);
+        setPartialErrorsModal({ title: 'Some uploads failed', errors });
       }
 
       closeCartUploadModal();
@@ -2939,6 +2943,23 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <img src={expandedScreenshot} alt="Cart screenshot" className="max-w-full max-h-full object-contain" />
             </div>
           )}
+
+          <ConfirmModal
+            isOpen={!!partialErrorsModal}
+            title={partialErrorsModal?.title ?? ''}
+            variant="error"
+            singleButton
+            confirmLabel="OK"
+            message={
+              <ul className="list-disc list-inside space-y-1">
+                {partialErrorsModal?.errors.map((err, i) => (
+                  <li key={i} className="break-words">{err}</li>
+                ))}
+              </ul>
+            }
+            onConfirm={() => setPartialErrorsModal(null)}
+            onCancel={() => setPartialErrorsModal(null)}
+          />
 
           {/* Journal Import Error Modal */}
           {importErrorMessage && (
