@@ -60,6 +60,7 @@ interface ReviewItem {
     bitsPerHour: number | null;
     tierBits: number;
     entryCount: number;
+    deletedAt: string | null;
   };
 }
 
@@ -306,6 +307,14 @@ export default function AuditReviewsPage() {
                     )}
                     {review.invalidated && (
                       <span className="text-xs uppercase px-2 py-0.5 bg-red-100 text-red-800">Invalidated</span>
+                    )}
+                    {review.project.deletedAt && (
+                      <span
+                        className="text-xs uppercase px-2 py-0.5 bg-red-100 text-red-800"
+                        title={`Project soft-deleted ${new Date(review.project.deletedAt).toLocaleString()}`}
+                      >
+                        Deleted
+                      </span>
                     )}
                     <span className="text-cream-50 text-xs ml-auto">
                       {new Date(review.createdAt).toLocaleString('en-US', {
