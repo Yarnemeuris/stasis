@@ -205,6 +205,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const typeHelpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [importingJournal, setImportingJournal] = useState(false);
+  const [importErrorMessage, setImportErrorMessage] = useState<string | null>(null);
 
   const canEdit = project && project.designStatus !== "in_review" && project.buildStatus !== "in_review";
 
@@ -309,7 +310,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       });
       if (!previewRes.ok) {
         const data = await previewRes.json();
-        alert(data.error || 'Failed to parse journal');
+        setImportErrorMessage(data.error || 'Failed to parse journal');
         return;
       }
       const { count } = await previewRes.json();
@@ -331,11 +332,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         if (timelineRes.ok) setTimelineItems(await timelineRes.json());
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to import journal');
+        setImportErrorMessage(data.error || 'Failed to import journal');
       }
     } catch (error) {
       console.error('Failed to import journal:', error);
-      alert('Failed to import journal');
+      setImportErrorMessage('Failed to import journal');
     } finally {
       setImportingJournal(false);
     }
@@ -2936,6 +2937,32 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           {expandedScreenshot && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 cursor-pointer" onClick={() => setExpandedScreenshot(null)}>
               <img src={expandedScreenshot} alt="Cart screenshot" className="max-w-full max-h-full object-contain" />
+            </div>
+          )}
+
+          {/* Journal Import Error Modal */}
+          {importErrorMessage && (
+            <div
+              className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+              onClick={() => setImportErrorMessage(null)}
+            >
+              <div
+                className="bg-cream-100 border-2 border-red-600 max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-red-600 text-xl uppercase tracking-wide mb-3">Journal Import Failed</h3>
+                <p className="text-brown-800 text-sm leading-relaxed mb-6 whitespace-pre-wrap">
+                  {importErrorMessage}
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setImportErrorMessage(null)}
+                    className="bg-orange-500 hover:bg-orange-400 text-white px-6 py-2 text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
