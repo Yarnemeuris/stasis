@@ -112,6 +112,7 @@ interface AdminProject {
   tier: number | null;
   bomTax: number | null;
   bomShipping: number | null;
+  noBomNeeded: boolean;
   requestedAmount: number | null;
   cartScreenshots: string[];
   createdAt: string;
@@ -187,6 +188,7 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
   const [ghChecksLoading, setGhChecksLoading] = useState(false);
   const [ghChecksError, setGhChecksError] = useState<string | null>(null);
   const [ghChecksOpen, setGhChecksOpen] = useState(false);
+  const [airtableLinks, setAirtableLinks] = useState<Array<{ stage: string | null; url: string }> | null>(null);
 
   useEffect(() => {
     async function fetchProject() {
@@ -229,6 +231,13 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
     fetch('/api/user/roles').then(r => r.json()).then(data => {
       setIsAdmin((data.roles as string[])?.includes('ADMIN'));
     }).catch(() => {});
+
+    fetch(`/api/admin/projects/${projectId}/airtable-links`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.links) setAirtableLinks(data.links);
+      })
+      .catch(() => {});
   }, [projectId, router]);
 
   // Auto-generate hours justification from session reviews
@@ -528,13 +537,29 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
   return (
     <>
       {/* Breadcrumb */}
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <Link href="/admin" className="text-cream-50 hover:text-orange-500 transition-colors text-sm flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
           Back to Projects
         </Link>
+        {airtableLinks && airtableLinks.length > 0 && (
+          <div className="flex items-center gap-3 text-xs uppercase tracking-wider text-cream-200">
+            <span>Airtable:</span>
+            {airtableLinks.map((link, i) => (
+              <a
+                key={i}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-orange-500 transition-colors underline decoration-cream-500/30 underline-offset-2"
+              >
+                {link.stage || 'Record'} ↗
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="max-w-4xl mx-auto">
@@ -1157,10 +1182,20 @@ export default function AdminProjectPage({ params }: { params: Promise<{ id: str
           )}
 
           {/* Bill of Materials */}
-          {project.bomItems && project.bomItems.length > 0 && (
+          {(project.noBomNeeded || (project.bomItems && project.bomItems.length > 0)) && (
             <div className="mb-8">
               <h2 className="text-cream-50 text-xl uppercase tracking-wide mb-4">Bill of Materials</h2>
-              
+
+              {project.noBomNeeded && (
+                <p className="text-orange-500 text-sm mb-4 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                  </svg>
+                  Marked as no parts needed
+                </p>
+              )}
+
               {/* Cost Summary */}
               {(() => {
                 const totalCost = project.bomItems.reduce((sum, item) => sum + bomItemTotal(item), 0) + (project.bomTax ?? 0) + (project.bomShipping ?? 0);
