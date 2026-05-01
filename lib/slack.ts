@@ -31,6 +31,23 @@ export async function sendSlackMessage(
   }
 }
 
+function isProdSlackEnv(): boolean {
+  if (process.env.SLACK_DM_ALLOW_ALL === "true") return true;
+  return (
+    process.env.NODE_ENV === "production" &&
+    process.env.REQUIRE_BASICAUTH !== "true"
+  );
+}
+
+async function isSlackIdAdmin(slackId: string): Promise<boolean> {
+  const { default: prisma } = await import("@/lib/prisma");
+  const user = await prisma.user.findFirst({
+    where: { slackId },
+    select: { roles: { select: { role: true } } },
+  });
+  return user?.roles.some((r) => r.role === "ADMIN") ?? false;
+}
+
 export async function sendSlackDM(
   slackId: string,
   text: string,
@@ -39,6 +56,19 @@ export async function sendSlackDM(
   const token = process.env.SLACK_BOT_TOKEN;
   if (!token) {
     return { ok: false, error: "SLACK_BOT_TOKEN not configured" };
+  }
+
+  if (!isProdSlackEnv()) {
+    const allowed = await isSlackIdAdmin(slackId);
+    if (!allowed) {
+      console.warn(
+        `[slack] blocked DM to ${slackId}: non-prod env restricts DMs to admins`
+      );
+      return {
+        ok: false,
+        error: "blocked: non-prod env can only DM admin users",
+      };
+    }
   }
 
   try {
