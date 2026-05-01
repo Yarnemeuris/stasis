@@ -17,6 +17,8 @@ import { STARTER_PROJECTS } from "@/lib/starter-projects";
 import { BomCsvImportModal } from '@/app/components/projects/BomCsvImportModal';
 import PreflightChecks from '@/app/components/projects/PreflightChecks';
 import type { PreflightCheck } from '@/app/components/projects/PreflightChecks';
+import { ConfirmModal } from '@/app/components/ConfirmModal';
+import { useToast } from '@/app/components/Toast';
 
 type ProjectStatus = "draft" | "in_review" | "approved" | "rejected" | "update_requested";
 
@@ -205,6 +207,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const typeHelpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [importingJournal, setImportingJournal] = useState(false);
+  const [importErrorMessage, setImportErrorMessage] = useState<string | null>(null);
+  const [partialErrorsModal, setPartialErrorsModal] = useState<{ title: string; errors: string[] } | null>(null);
+  const { showToast } = useToast();
 
   const canEdit = project && project.designStatus !== "in_review" && project.buildStatus !== "in_review";
 
@@ -309,7 +314,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       });
       if (!previewRes.ok) {
         const data = await previewRes.json();
-        alert(data.error || 'Failed to parse journal');
+        setImportErrorMessage(data.error || 'Failed to parse journal');
         return;
       }
       const { count } = await previewRes.json();
@@ -322,7 +327,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Imported ${data.imported} journal ${data.imported === 1 ? 'entry' : 'entries'}`);
+        showToast(`Imported ${data.imported} journal ${data.imported === 1 ? 'entry' : 'entries'}`, { variant: 'success' });
         const [updatedRes, timelineRes] = await Promise.all([
           fetch(`/api/projects/${projectId}`),
           fetch(`/api/projects/${projectId}/timeline`),
@@ -331,11 +336,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         if (timelineRes.ok) setTimelineItems(await timelineRes.json());
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to import journal');
+        setImportErrorMessage(data.error || 'Failed to import journal');
       }
     } catch (error) {
       console.error('Failed to import journal:', error);
-      alert('Failed to import journal');
+      setImportErrorMessage('Failed to import journal');
     } finally {
       setImportingJournal(false);
     }
@@ -983,7 +988,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       }
 
       if (errors.length > 0) {
-        alert(`Some uploads failed:\n${errors.join('\n')}`);
+        setPartialErrorsModal({ title: 'Some uploads failed', errors });
       }
 
       closeCartUploadModal();
@@ -2936,6 +2941,49 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           {expandedScreenshot && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 cursor-pointer" onClick={() => setExpandedScreenshot(null)}>
               <img src={expandedScreenshot} alt="Cart screenshot" className="max-w-full max-h-full object-contain" />
+            </div>
+          )}
+
+          <ConfirmModal
+            isOpen={!!partialErrorsModal}
+            title={partialErrorsModal?.title ?? ''}
+            variant="error"
+            singleButton
+            confirmLabel="OK"
+            message={
+              <ul className="list-disc list-inside space-y-1">
+                {partialErrorsModal?.errors.map((err, i) => (
+                  <li key={i} className="break-words">{err}</li>
+                ))}
+              </ul>
+            }
+            onConfirm={() => setPartialErrorsModal(null)}
+            onCancel={() => setPartialErrorsModal(null)}
+          />
+
+          {/* Journal Import Error Modal */}
+          {importErrorMessage && (
+            <div
+              className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+              onClick={() => setImportErrorMessage(null)}
+            >
+              <div
+                className="bg-cream-100 border-2 border-red-600 max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-red-600 text-xl uppercase tracking-wide mb-3">Journal Import Failed</h3>
+                <p className="text-brown-800 text-sm leading-relaxed mb-6 whitespace-pre-wrap">
+                  {importErrorMessage}
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setImportErrorMessage(null)}
+                    className="bg-orange-500 hover:bg-orange-400 text-white px-6 py-2 text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

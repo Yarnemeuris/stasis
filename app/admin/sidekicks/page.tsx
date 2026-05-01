@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useToast } from '@/app/components/Toast';
 
 interface AssigneeProject {
   id: string;
@@ -176,6 +177,7 @@ function AssignDialog({
 }
 
 export default function AdminSidekicksPage() {
+  const { showToast } = useToast();
   const [sidekicks, setSidekicks] = useState<Sidekick[]>([]);
   const [unassignedUsers, setUnassignedUsers] = useState<UnassignedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,11 +240,11 @@ export default function AdminSidekicksPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Reassigned ${data.reassigned} assignee(s) to other sidekicks.`);
+        showToast(`Reassigned ${data.reassigned} assignee(s) to other sidekicks`, { variant: 'success' });
         fetchSidekicks();
       } else {
         const data = await res.json();
-        alert(`Failed: ${data.error || 'Unknown error'}`);
+        showToast(`Failed: ${data.error || 'Unknown error'}`, { variant: 'error' });
       }
     } catch (error) {
       console.error('Failed to reassign:', error);
@@ -704,11 +706,11 @@ export default function AdminSidekicksPage() {
                   });
                   if (res.ok) {
                     const data = await res.json();
-                    alert(`Assigned ${data.assigned} user(s) to sidekicks.`);
+                    showToast(`Assigned ${data.assigned} user(s) to sidekicks`, { variant: 'success' });
                     fetchSidekicks();
                   } else {
                     const data = await res.json();
-                    alert(`Failed: ${data.error || 'Unknown error'}`);
+                    showToast(`Failed: ${data.error || 'Unknown error'}`, { variant: 'error' });
                   }
                 } catch (error) {
                   console.error('Failed to assign all:', error);

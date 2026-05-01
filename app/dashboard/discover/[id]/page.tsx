@@ -8,6 +8,7 @@ import type { ProjectTag, BadgeType } from "@/app/generated/prisma/enums";
 import type { PublicTimelineItem } from '@/app/api/discover/[id]/timeline/route';
 import { fixMarkdownImages } from '@/lib/markdown';
 import { UnapproveProjectModal } from '@/app/components/admin/UnapproveProjectModal';
+import { ConfirmModal } from '@/app/components/ConfirmModal';
 
 const MDPreview = dynamic(
   () => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown),
@@ -175,6 +176,7 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
   const [kudosLoading, setKudosLoading] = useState(false);
   const [adminActioning, setAdminActioning] = useState(false);
   const [unapproveStage, setUnapproveStage] = useState<'design' | 'build' | null>(null);
+  const [partialErrorsModal, setPartialErrorsModal] = useState<{ title: string; errors: string[]; footer?: string } | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -258,7 +260,11 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
   const handleUnapproveSuccess = (data: { partialFailures?: string[] } & Record<string, unknown>) => {
     setProject(prev => prev ? { ...prev, ...data } : prev);
     if (Array.isArray(data.partialFailures) && data.partialFailures.length > 0) {
-      alert(`Un-approve completed, but some cleanup steps failed:\n\n${data.partialFailures.join('\n')}\n\nSee the audit log for full details.`);
+      setPartialErrorsModal({
+        title: 'Un-approve completed with errors',
+        errors: data.partialFailures,
+        footer: 'See the audit log for full details.',
+      });
     }
   };
 
@@ -446,6 +452,28 @@ export default function DiscoverProjectPage({ params }: { params: Promise<{ id: 
         projectId={projectId}
         onClose={() => setUnapproveStage(null)}
         onSuccess={handleUnapproveSuccess}
+      />
+
+      <ConfirmModal
+        isOpen={!!partialErrorsModal}
+        title={partialErrorsModal?.title ?? ''}
+        variant="error"
+        singleButton
+        confirmLabel="OK"
+        message={
+          <div className="space-y-3">
+            <ul className="list-disc list-inside space-y-1">
+              {partialErrorsModal?.errors.map((err, i) => (
+                <li key={i} className="break-words">{err}</li>
+              ))}
+            </ul>
+            {partialErrorsModal?.footer && (
+              <p className="text-cream-200 text-xs uppercase tracking-wide">{partialErrorsModal.footer}</p>
+            )}
+          </div>
+        }
+        onConfirm={() => setPartialErrorsModal(null)}
+        onCancel={() => setPartialErrorsModal(null)}
       />
     </div>
   );

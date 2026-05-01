@@ -86,6 +86,28 @@ interface ReviewData {
   reviewerId: string;
 }
 
+// Skip-set: track project IDs the reviewer has explicitly skipped this session
+// so the Skip button advances through the queue instead of cycling between the
+// same two in_review projects.
+const SKIP_STORAGE_KEY = 'reviewSkippedIds';
+function getSkippedIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = sessionStorage.getItem(SKIP_STORAGE_KEY);
+    return new Set<string>(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+function saveSkippedIds(s: Set<string>) {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.setItem(SKIP_STORAGE_KEY, JSON.stringify([...s])); } catch {}
+}
+function clearSkippedIds() {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.removeItem(SKIP_STORAGE_KEY); } catch {}
+}
+
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function ReviewDetailPage() {
@@ -103,6 +125,8 @@ export default function ReviewDetailPage() {
   // Form state
   const [feedback, setFeedback] = useState('');
   const [reason, setReason] = useState('');
+  const [feedbackError, setFeedbackError] = useState(false);
+  const [reasonError, setReasonError] = useState(false);
   const [workUnitsOverride, setWorkUnitsOverride] = useState('');
   const [tierOverride, setTierOverride] = useState('');
   const [grantOverride, setGrantOverride] = useState('');
@@ -173,15 +197,16 @@ export default function ReviewDetailPage() {
   }
 
   async function submitReview(result: string) {
+    let invalid = false;
     if (!feedback.trim()) {
-      alert('Feedback for submitter is required.');
-      return;
+      setFeedbackError(true);
+      invalid = true;
     }
-
     if (result === 'APPROVED' && data?.isAdmin && !reason.trim()) {
-      alert('Internal justification is required.');
-      return;
+      setReasonError(true);
+      invalid = true;
     }
+    if (invalid) return;
 
     if ((result === 'APPROVED' || result === 'REJECTED') && !confirm(`Are you sure you want to ${result.toLowerCase()} this submission?`)) {
       return;
@@ -244,11 +269,21 @@ export default function ReviewDetailPage() {
 
   async function skipToNext() {
     fetch(`/api/reviews/${id}/claim`, { method: 'DELETE' }).catch(() => {});
+    const skipped = getSkippedIds();
+    skipped.add(id);
+    saveSkippedIds(skipped);
     try {
-      const res = await fetch('/api/reviews?limit=10');
+      const res = await fetch('/api/reviews?limit=50');
       if (res.ok) {
         const { items } = await res.json();
-        const next = items.find((p: { id: string }) => p.id !== id);
+        let next = items.find((p: { id: string }) => p.id !== id && !skipped.has(p.id));
+        if (!next) {
+          // Exhausted the queue — reset so the user can cycle again.
+          clearSkippedIds();
+          const fresh = new Set<string>([id]);
+          saveSkippedIds(fresh);
+          next = items.find((p: { id: string }) => p.id !== id);
+        }
         if (next) {
           router.push(`/reviews/${next.id}`);
           return;
@@ -749,9 +784,19 @@ export default function ReviewDetailPage() {
 
       {/* ── Internal Notes Card ── */}
       <div className="bg-cream-100 border-2 border-cream-400 p-6">
-        <h2 className="text-brown-800 text-sm uppercase tracking-wider mb-2">
-          Internal Notes <span className="text-cream-600 normal-case">(about this author, shared across reviewers)</span>
-        </h2>
+        <div className="flex items-baseline justify-between gap-3 mb-2">
+          <h2 className="text-brown-800 text-sm uppercase tracking-wider">
+            Internal Notes <span className="text-cream-600 normal-case">(about this author, shared across reviewers)</span>
+          </h2>
+          <Link
+            href={`/reviews/authors/${data.submission.project.user.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-500 hover:text-orange-600 text-xs uppercase tracking-wider whitespace-nowrap transition-colors"
+          >
+            Open standalone →
+          </Link>
+        </div>
         <textarea
           value={internalNote}
           onChange={(e) => handleNoteChange(e.target.value)}
@@ -828,10 +873,13 @@ export default function ReviewDetailPage() {
                 <label className="text-cream-600 text-xs uppercase block mb-1">Internal Justification (required for approval)</label>
                 <textarea
                   value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full h-20 px-3 py-2 text-sm border border-cream-400 bg-cream-50 text-brown-800 focus:outline-none focus:border-orange-500 resize-y"
+                  onChange={(e) => { setReason(e.target.value); if (reasonError) setReasonError(false); }}
+                  className={`w-full h-20 px-3 py-2 text-sm border bg-cream-50 text-brown-800 focus:outline-none resize-y ${reasonError ? 'border-red-500 focus:border-red-500' : 'border-cream-400 focus:border-orange-500'}`}
                   placeholder="Internal reason for your decision (not shown to submitter)..."
                 />
+                {reasonError && (
+                  <p className="text-red-600 text-xs uppercase tracking-wide mt-1">Required to approve</p>
+                )}
               </div>
             )}
 
@@ -841,11 +889,14 @@ export default function ReviewDetailPage() {
               </label>
               <textarea
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                className="w-full h-24 px-3 py-2 text-sm border border-cream-400 bg-cream-50 text-brown-800 focus:outline-none focus:border-orange-500 resize-y"
+                onChange={(e) => { setFeedback(e.target.value); if (feedbackError) setFeedbackError(false); }}
+                className={`w-full h-24 px-3 py-2 text-sm border bg-cream-50 text-brown-800 focus:outline-none resize-y ${feedbackError ? 'border-red-500 focus:border-red-500' : 'border-cream-400 focus:border-orange-500'}`}
                 placeholder="Feedback visible to the submitter..."
                 required
               />
+              {feedbackError && (
+                <p className="text-red-600 text-xs uppercase tracking-wide mt-1">Feedback is required</p>
+              )}
             </div>
 
             {project.user.fraudConvicted && (

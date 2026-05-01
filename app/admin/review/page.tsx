@@ -7,6 +7,7 @@ import { getTierById } from '@/lib/tiers';
 import { projects as starterProjects } from '@/app/starter-projects/projects';
 import { useHotkeys, type HotkeyBinding } from '@/lib/hotkeys';
 import HotkeyOverlay from '@/app/components/HotkeyOverlay';
+import { useToast } from '@/app/components/Toast';
 
 interface ReviewAuthor {
   id: string;
@@ -101,6 +102,7 @@ type StatsTab = 'weekly' | 'allTime' | 'fudgeHoodie';
 
 export default function ReviewQueuePage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<ReviewTab>('DESIGN');
   const [designData, setDesignData] = useState<QueueResponse | null>(null);
   const [buildData, setBuildData] = useState<QueueResponse | null>(null);
@@ -115,7 +117,9 @@ export default function ReviewQueuePage() {
   const [rewards, setRewards] = useState<RewardResponse | null>(null);
   const [rewardsLoading, setRewardsLoading] = useState(false);
   const [hotkeyOverlayOpen, setHotkeyOverlayOpen] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const setPrioritizeAttending = (value: boolean) => {
     setPrioritizeAttendingState(value);
@@ -154,9 +158,9 @@ export default function ReviewQueuePage() {
           return;
         }
       }
-      alert('No submissions match that filter.');
+      showToast('No submissions match that filter', { variant: 'warn' });
     } catch {
-      alert('Failed to load review queue.');
+      showToast('Failed to load review queue', { variant: 'error' });
     } finally {
       setNavigating(false);
     }
@@ -192,6 +196,7 @@ export default function ReviewQueuePage() {
   const loadMore = useCallback(async (tab: ReviewTab) => {
     const current = tab === 'DESIGN' ? designData : buildData;
     if (!current?.nextCursor) return;
+    setLoadingMore(true);
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (prioritizeAttending) params.set('prioritizeAttending', 'true');
@@ -210,6 +215,8 @@ export default function ReviewQueuePage() {
       else setBuildData(updated);
     } catch (err) {
       console.error('Failed to load more:', err);
+    } finally {
+      setLoadingMore(false);
     }
   }, [designData, buildData, search, prioritizeAttending, region]);
 
@@ -239,6 +246,18 @@ export default function ReviewQueuePage() {
   useEffect(() => {
     if (statsTab === 'fudgeHoodie') fetchRewards();
   }, [statsTab, fetchRewards]);
+
+  // Auto-load the next page when the sentinel scrolls into view.
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    if (!data?.nextCursor) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) loadMore(activeTab);
+    }, { rootMargin: '400px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [activeTab, data?.nextCursor, loadMore]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -605,14 +624,18 @@ export default function ReviewQueuePage() {
                         </div>
                       </td>
                       <td className="px-3 py-3 hidden lg:table-cell">
-                        <div className="flex items-center gap-2">
+                        <Link
+                          href={`/reviews/authors/${item.author.id}`}
+                          className="flex items-center gap-2 group"
+                          title="Open author notes"
+                        >
                           {item.author.image && (
                             <img src={item.author.image} alt="" className="w-5 h-5 rounded-full" />
                           )}
-                          <span className="text-sm text-cream-100 truncate max-w-[120px]">
+                          <span className="text-sm text-cream-100 group-hover:text-orange-400 transition-colors truncate max-w-[120px]">
                             {item.author.name || item.author.email}
                           </span>
-                        </div>
+                        </Link>
                       </td>
                       <td className="px-3 py-3 hidden md:table-cell">
                         {tierInfo && (
@@ -667,13 +690,8 @@ export default function ReviewQueuePage() {
           </div>
 
           {data?.nextCursor && (
-            <div className="flex justify-center py-4">
-              <button
-                onClick={() => loadMore(activeTab)}
-                className="px-4 py-2 text-xs uppercase tracking-wider bg-brown-800 border border-cream-500/20 text-cream-100 hover:bg-cream-500/10 cursor-pointer"
-              >
-                Load more
-              </button>
+            <div ref={sentinelRef} className="flex justify-center py-4 text-xs uppercase tracking-wider text-cream-200">
+              {loadingMore ? 'Loading more...' : 'Scroll for more'}
             </div>
           )}
 

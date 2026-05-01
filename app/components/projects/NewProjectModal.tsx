@@ -5,6 +5,7 @@ import { ProjectTag, BadgeType } from "@/app/generated/prisma/enums"
 import { STARTER_PROJECTS } from "@/lib/starter-projects"
 import { AVAILABLE_BADGES, MAX_BADGES_PER_PROJECT, getBadgeImage } from "@/lib/badges"
 import { TIERS, BIT_SPEND_RATIO } from "@/lib/tiers"
+import { useToast } from "@/app/components/Toast"
 
 interface Props {
   isOpen: boolean
@@ -26,6 +27,7 @@ const STEPS = ['Details', 'Badges', 'Complexity'] as const
 type Step = 0 | 1 | 2
 
 export function NewProjectModal({ isOpen, onClose, onSubmit, error }: Readonly<Props>) {
+  const { showToast } = useToast()
   const [step, setStep] = useState<Step>(0)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -146,10 +148,10 @@ export function NewProjectModal({ isOpen, onClose, onSubmit, error }: Readonly<P
         })
         if (res.ok) {
           const data = await res.json()
-          alert(`Imported ${data.imported} journal ${data.imported === 1 ? 'entry' : 'entries'}`)
+          showToast(`Imported ${data.imported} journal ${data.imported === 1 ? 'entry' : 'entries'}`, { variant: 'success' })
         } else {
           const data = await res.json()
-          alert(data.error || 'Project created, but journal import failed')
+          showToast(data.error || 'Project created, but journal import failed', { variant: 'error' })
         }
       }
 
